@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,7 +54,14 @@ public class VehiculeService {
     public void delete(Integer id) {
         Vehicule entity = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Véhicule introuvable"));
+
+        // Vérifie que le véhicule est actif
+        if (!entity.getActif()) {
+            throw new RuntimeException("Véhicule déjà désactivé");
+        }
+
         entity.setActif(false);
+        entity.setDateDesactivation(LocalDateTime.now());
         repo.save(entity);
     }
 

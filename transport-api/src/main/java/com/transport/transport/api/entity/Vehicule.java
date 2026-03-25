@@ -25,4 +25,6 @@ public class Vehicule {
     @Column(updatable = false)
     @Builder.Default
     private LocalDateTime dateInsertion = LocalDateTime.now();
+
+    private LocalDateTime dateDesactivation;
 }

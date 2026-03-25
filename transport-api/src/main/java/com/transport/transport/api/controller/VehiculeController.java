@@ -26,6 +26,7 @@ public class VehiculeController {
     private final VehiculeService service;
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Lister tous les véhicules actifs")
     public ResponseEntity<CollectionModel<VehiculeResponse>> findAll() {
         List<VehiculeResponse> list = service.findAll();
