@@ -1,0 +1,917 @@
+{
+  "info": {
+    "name": "Transport API",
+    "description": "Collection complète pour tester l'API Transport avec JWT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "employeToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Authentification",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('adminToken', json.token);",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    pm.test('Login admin OK', function() { pm.response.to.have.status(200); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@transport.com\",\n  \"motDePasse\": \"Admin@1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login Employe (Jean)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('employeToken', json.token);",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    pm.test('Login employe OK', function() { pm.response.to.have.status(200); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jean@transport.com\",\n  \"motDePasse\": \"Emp@1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Register Nouvel Employe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Register OK', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Razafy\",\n  \"prenom\": \"Luc\",\n  \"email\": \"luc@transport.com\",\n  \"motDePasse\": \"Luc@1234\",\n  \"confirmationMotDePasse\": \"Luc@1234\",\n  \"telephone\": \"0341234567\",\n  \"idDepartement\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login SANS credentials (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Doit retourner 400/401', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"fake@transport.com\",\n  \"motDePasse\": \"wrong\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": " Adresses Employes",
+      "item": [
+        {
+          "name": "[EMPLOYE] Creer mon adresse (auto idEmploye)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adresse\": \"Ankadimbahoaka, Antananarivo\",\n  \"latitude\": -18.950000,\n  \"longitude\": 47.510000,\n  \"estPrincipale\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/adresses", "host": ["{{baseUrl}}"], "path": ["api", "adresses"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Voir mes adresses (idEmploye=2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/adresses/employe/2", "host": ["{{baseUrl}}"], "path": ["api", "adresses", "employe", "2"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Voir adresse par ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/adresses/1", "host": ["{{baseUrl}}"], "path": ["api", "adresses", "1"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Voir adresses d'un AUTRE employe (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Acces refuse 403', function() { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/adresses/employe/3", "host": ["{{baseUrl}}"], "path": ["api", "adresses", "employe", "3"] }
+          }
+        },
+        {
+          "name": "[SANS TOKEN] Creer adresse (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Non authentifie 401', function() { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adresse\": \"Test\",\n  \"latitude\": -18.9,\n  \"longitude\": 47.5,\n  \"estPrincipale\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/adresses", "host": ["{{baseUrl}}"], "path": ["api", "adresses"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Voir adresses de n'importe quel employe",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/adresses/employe/3", "host": ["{{baseUrl}}"], "path": ["api", "adresses", "employe", "3"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Modifier une adresse",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEmploye\": 2,\n  \"adresse\": \"Analakely modifie, Antananarivo\",\n  \"latitude\": -18.911000,\n  \"longitude\": 47.526000,\n  \"estPrincipale\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/adresses/1", "host": ["{{baseUrl}}"], "path": ["api", "adresses", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Desactiver une adresse",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/adresses/4", "host": ["{{baseUrl}}"], "path": ["api", "adresses", "4"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": " Affectations",
+      "item": [
+        {
+          "name": "[EMPLOYE] Creer demande (auto vehicule + adresse)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Demande creee 200', function() { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.test('idEmploye auto-assigne', function() { pm.expect(json.idEmploye).to.eql(2); });",
+                  "    pm.test('Adresse auto-assignee', function() { pm.expect(json.adresse).to.not.be.null; });",
+                  "    pm.test('Vehicule auto-assigne', function() { pm.expect(json.matriculeVehicule).to.not.be.null; });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDate\": 1,\n  \"idTypeTransport\": 1,\n  \"idSite\": 1,\n  \"idHeureTransport\": 1,\n  \"commentaire\": \"Demande auto vehicule + adresse\",\n  \"idType\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/affectations", "host": ["{{baseUrl}}"], "path": ["api", "affectations"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Creer demande (choix vehicule)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDate\": 2,\n  \"idTypeTransport\": 1,\n  \"idSite\": 1,\n  \"idHeureTransport\": 2,\n  \"idVehicule\": 3,\n  \"commentaire\": \"Choix vehicule TAN-9012\",\n  \"idType\": 2\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/affectations", "host": ["{{baseUrl}}"], "path": ["api", "affectations"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Voir mes affectations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/affectations", "host": ["{{baseUrl}}"], "path": ["api", "affectations"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Voir affectation par ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/affectations/1", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "1"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Voir affectation d'un AUTRE (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Acces refuse 403', function() { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/affectations/4", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "4"] }
+          }
+        },
+        {
+          "name": "[EMPLOYE] Valider affectation (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Acces refuse 403', function() { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employeToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/affectations/5/valider", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "5", "valider"] }
+          }
+        },
+        {
+          "name": "[SANS TOKEN] Creer affectation (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Non authentifie 401', function() { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDate\": 1,\n  \"idTypeTransport\": 1,\n  \"idSite\": 1,\n  \"idHeureTransport\": 1,\n  \"idType\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/affectations", "host": ["{{baseUrl}}"], "path": ["api", "affectations"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Voir TOUTES les affectations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/affectations", "host": ["{{baseUrl}}"], "path": ["api", "affectations"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Filtrer affectations par date",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/affectations?estValidee=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "affectations"],
+              "query": [{ "key": "estValidee", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Valider - garder tel quel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Validation OK', function() { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('estValidee = true', function() { pm.expect(pm.response.json().estValidee).to.be.true; });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/affectations/3/valider", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "3", "valider"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Valider - changer vehicule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Validation OK', function() { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Vehicule change', function() { pm.expect(pm.response.json().idVehicule).to.eql(2); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"idVehicule\": 2\n}" },
+            "url": { "raw": "{{baseUrl}}/api/affectations/4/valider", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "4", "valider"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Valider - reassign auto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Validation OK', function() { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Vehicule auto-assigne', function() { pm.expect(pm.response.json().matriculeVehicule).to.not.be.null; });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"reassign\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/affectations/5/valider", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "5", "valider"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Modifier une affectation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDate\": 2,\n  \"idTypeTransport\": 2,\n  \"idSite\": 1,\n  \"idHeureTransport\": 2,\n  \"idVehicule\": 2,\n  \"commentaire\": \"Modifie par admin\",\n  \"idType\": 2\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/affectations/1", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Stats affectations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Stats OK', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/affectations/stats", "host": ["{{baseUrl}}"], "path": ["api", "affectations", "stats"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": " Employes",
+      "item": [
+        {
+          "name": "Lister tous les employes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/employes", "host": ["{{baseUrl}}"], "path": ["api", "employes"] }
+          }
+        },
+        {
+          "name": "Obtenir employe par ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/employes/2", "host": ["{{baseUrl}}"], "path": ["api", "employes", "2"] }
+          }
+        },
+        {
+          "name": "Employes par departement",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/employes/departement/1", "host": ["{{baseUrl}}"], "path": ["api", "employes", "departement", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer employe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Nouveau\",\n  \"prenom\": \"Test\",\n  \"matricule\": \"EMP999\",\n  \"telephone\": \"0349999999\",\n  \"idDepartement\": 2\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employes", "host": ["{{baseUrl}}"], "path": ["api", "employes"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Modifier employe",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Rakoto\",\n  \"prenom\": \"Jean-Pierre\",\n  \"matricule\": \"EMP001\",\n  \"telephone\": \"0340000002\",\n  \"idDepartement\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employes/2", "host": ["{{baseUrl}}"], "path": ["api", "employes", "2"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Desactiver employe",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/employes/5", "host": ["{{baseUrl}}"], "path": ["api", "employes", "5"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": " Vehicules",
+      "item": [
+        {
+          "name": "[ADMIN] Lister vehicules",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/vehicules", "host": ["{{baseUrl}}"], "path": ["api", "vehicules"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Obtenir vehicule par ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/vehicules/1", "host": ["{{baseUrl}}"], "path": ["api", "vehicules", "1"] }
+          }
+        },
+        {
+          "name": "Trajets d'un vehicule (agregation)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/vehicules/1/trajets", "host": ["{{baseUrl}}"], "path": ["api", "vehicules", "1", "trajets"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer vehicule",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"matricule\": \"TAN-NEW1\",\n  \"nombrePlaces\": 10\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/vehicules", "host": ["{{baseUrl}}"], "path": ["api", "vehicules"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Modifier vehicule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"matricule\": \"TAN-1234\",\n  \"nombrePlaces\": 12\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/vehicules/1", "host": ["{{baseUrl}}"], "path": ["api", "vehicules", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Desactiver vehicule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/vehicules/3", "host": ["{{baseUrl}}"], "path": ["api", "vehicules", "3"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": " Sites",
+      "item": [
+        {
+          "name": "Lister sites",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/sites", "host": ["{{baseUrl}}"], "path": ["api", "sites"] }
+          }
+        },
+        {
+          "name": "Obtenir site par ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/sites/1", "host": ["{{baseUrl}}"], "path": ["api", "sites", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer site",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Entrepot\",\n  \"adresse\": \"Route Digue, Tana\",\n  \"latitude\": -18.870000,\n  \"longitude\": 47.550000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/sites", "host": ["{{baseUrl}}"], "path": ["api", "sites"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Modifier site",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Siege Central\",\n  \"adresse\": \"Galaxy, Andraharo\",\n  \"latitude\": -18.880000,\n  \"longitude\": 47.540000\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/sites/1", "host": ["{{baseUrl}}"], "path": ["api", "sites", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Desactiver site",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/sites/2", "host": ["{{baseUrl}}"], "path": ["api", "sites", "2"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": " Departements",
+      "item": [
+        {
+          "name": "Lister departements",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/departements", "host": ["{{baseUrl}}"], "path": ["api", "departements"] }
+          }
+        },
+        {
+          "name": "Obtenir departement par ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/departements/1", "host": ["{{baseUrl}}"], "path": ["api", "departements", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer departement",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Marketing\",\n  \"description\": \"Departement Marketing\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/departements", "host": ["{{baseUrl}}"], "path": ["api", "departements"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Modifier departement",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"IT & Systemes\",\n  \"description\": \"Departement IT modifie\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/departements/1", "host": ["{{baseUrl}}"], "path": ["api", "departements", "1"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Supprimer departement",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/departements/4", "host": ["{{baseUrl}}"], "path": ["api", "departements", "4"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Types Transport",
+      "item": [
+        {
+          "name": "Lister types transport",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/types-transport", "host": ["{{baseUrl}}"], "path": ["api", "types-transport"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer type transport",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libelle\": \"Aller-Retour\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/types-transport", "host": ["{{baseUrl}}"], "path": ["api", "types-transport"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Heures Transport",
+      "item": [
+        {
+          "name": "Lister heures transport",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/heures-transport", "host": ["{{baseUrl}}"], "path": ["api", "heures-transport"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer heure transport",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"heure\": \"12:00:00\",\n  \"libelle\": \"Midi\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/heures-transport", "host": ["{{baseUrl}}"], "path": ["api", "heures-transport"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dates Transport",
+      "item": [
+        {
+          "name": "Lister dates transport",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/dates-transport", "host": ["{{baseUrl}}"], "path": ["api", "dates-transport"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer date transport",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateJour\": \"2026-04-01\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/dates-transport", "host": ["{{baseUrl}}"], "path": ["api", "dates-transport"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Types Affectation",
+      "item": [
+        {
+          "name": "Lister types affectation",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/types-affectation", "host": ["{{baseUrl}}"], "path": ["api", "types-affectation"] }
+          }
+        },
+        {
+          "name": "[ADMIN] Creer type affectation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libelle\": \"Prioritaire\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/types-affectation", "host": ["{{baseUrl}}"], "path": ["api", "types-affectation"] }
+          }
+        }
+      ]
+    }
+  ]
+}
