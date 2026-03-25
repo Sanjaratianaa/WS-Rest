@@ -27,9 +27,12 @@ public class RegisterRequest {
     @NotBlank(message = "La confirmation du mot de passe est obligatoire")
     private String confirmationMotDePasse;
 
-    @NotBlank(message = "Le telephone est obligatoire")
+    @NotBlank(message = "Le numéro de téléphone est obligatoire.")
+    @Size(max = 20, message = "Le numéro de téléphone ne doit pas dépasser 20 caractères.")
+    @Pattern(regexp = "^\\+?[0-9\\s\\-()]*$", message = "Le numéro de téléphone n'est pas valide.")
     private String telephone;
 
     @NotNull(message = "L'id departement est obligatoire")
+    @Positive(message = "L'identifiant du département doit être un entier positif.")
     private Integer idDepartement;
 }

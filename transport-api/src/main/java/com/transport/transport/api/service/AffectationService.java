@@ -1,6 +1,7 @@
 package com.transport.transport.api.service;
 
 import com.transport.transport.api.dto.request.AffectationRequest;
+import com.transport.transport.api.dto.request.ValidationRequest;
 import com.transport.transport.api.dto.response.AffectationResponse;
 import com.transport.transport.api.dto.response.AffectationStatsResponse;
 import com.transport.transport.api.entity.*;
@@ -31,8 +32,8 @@ public class AffectationService {
     private final HistoriqueAffectationRepository historiqueRepo;
 
     public List<AffectationResponse> findWithFilters(LocalDate date, Integer idVehicule,
-                                                      Integer idEmploye, Integer idSite,
-                                                      Boolean estValidee, Integer idDepartement) {
+                                                     Integer idEmploye, Integer idSite,
+                                                     Boolean estValidee, Integer idDepartement) {
         return repo.findWithFilters(date, idVehicule, idEmploye, idSite, estValidee, idDepartement)
                 .stream().map(this::toResponse).toList();
     }
@@ -49,7 +50,54 @@ public class AffectationService {
 
     @Transactional
     public AffectationResponse create(AffectationRequest request) {
-        Affectation entity = new Affectation();
+        Employe employe = employeRepo.findById(request.getIdEmploye())
+                .orElseThrow(() -> new RuntimeException("Employé introuvable"));
+
+        AdresseEmploye adresse = request.getIdAdresse() != null
+                ? adresseRepo.findById(request.getIdAdresse())
+                .orElseThrow(() -> new RuntimeException("Adresse introuvable"))
+                : adresseRepo.findByEmployeIdAndEstPrincipaleTrueAndActifTrue(request.getIdEmploye())
+                .orElseThrow(() -> new RuntimeException(
+                        "Vous devez avoir une adresse principale pour faire une demande de transport"));
+
+        DateTransport dateTransport = dateTransportRepo.findById(request.getIdDate())
+                .orElseThrow(() -> new RuntimeException("DateTransport introuvable"));
+
+        HeureTransport heureTransport = heureTransportRepo.findById(request.getIdHeureTransport())
+                .orElseThrow(() -> new RuntimeException("HeureTransport introuvable"));
+
+        Vehicule vehicule = request.getIdVehicule() != null
+                ? vehiculeRepo.findById(request.getIdVehicule())
+                .orElseThrow(() -> new RuntimeException("Véhicule introuvable"))
+                : findVehiculeDisponible(dateTransport.getId(), heureTransport.getId());
+
+        Affectation entity = Affectation.builder()
+                .dateTransport(dateTransport)
+                .employe(employe)
+                .adresse(adresse)
+                .typeTransport(typeTransportRepo.findById(request.getIdTypeTransport())
+                        .orElseThrow(() -> new RuntimeException("TypeTransport introuvable")))
+                .site(siteRepo.findById(request.getIdSite())
+                        .orElseThrow(() -> new RuntimeException("Site introuvable")))
+                .heureTransport(heureTransport)
+                .typeAffectation(typeAffectationRepo.findById(request.getIdType())
+                        .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable")))
+                .vehicule(vehicule)
+                .commentaire(request.getCommentaire())
+                .estValidee(null)
+                .estArchive(false)
+                .dateCreation(LocalDateTime.now())
+                .build();
+
+        return toResponse(repo.save(entity));
+    }
+
+    @Transactional
+    public AffectationResponse update(Integer id, AffectationRequest request) {
+        Affectation entity = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Affectation introuvable"));
+
+        saveHistorique(entity);
 
         if (request.getIdDate() != null)
             entity.setDateTransport(dateTransportRepo.findById(request.getIdDate())
@@ -66,67 +114,37 @@ public class AffectationService {
         if (request.getIdSite() != null)
             entity.setSite(siteRepo.findById(request.getIdSite())
                     .orElseThrow(() -> new RuntimeException("Site introuvable")));
-        if (request.getIdVehicule() != null)
-            entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule())
-                    .orElseThrow(() -> new RuntimeException("Véhicule introuvable")));
         if (request.getIdHeureTransport() != null)
             entity.setHeureTransport(heureTransportRepo.findById(request.getIdHeureTransport())
                     .orElseThrow(() -> new RuntimeException("HeureTransport introuvable")));
         if (request.getIdType() != null)
             entity.setTypeAffectation(typeAffectationRepo.findById(request.getIdType())
                     .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable")));
-
-        entity.setCommentaire(request.getCommentaire());
-        entity.setEstValidee(null);
-        entity.setEstArchive(false);
-        entity.setDateCreation(LocalDateTime.now());
-
-        return toResponse(repo.save(entity));
-    }
-
-    @Transactional
-    public AffectationResponse update(Integer id, AffectationRequest request) {
-        Affectation entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Affectation introuvable"));
-
-        saveHistorique(entity);
-
-        if (request.getIdDate() != null)
-            entity.setDateTransport(dateTransportRepo.findById(request.getIdDate()).orElse(null));
-        if (request.getIdEmploye() != null)
-            entity.setEmploye(employeRepo.findById(request.getIdEmploye()).orElse(null));
-        if (request.getIdAdresse() != null)
-            entity.setAdresse(adresseRepo.findById(request.getIdAdresse()).orElse(null));
-        if (request.getIdTypeTransport() != null)
-            entity.setTypeTransport(typeTransportRepo.findById(request.getIdTypeTransport()).orElse(null));
-        if (request.getIdSite() != null)
-            entity.setSite(siteRepo.findById(request.getIdSite()).orElse(null));
         if (request.getIdVehicule() != null)
-            entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule()).orElse(null));
-        if (request.getIdHeureTransport() != null)
-            entity.setHeureTransport(heureTransportRepo.findById(request.getIdHeureTransport()).orElse(null));
-        if (request.getIdType() != null)
-            entity.setTypeAffectation(typeAffectationRepo.findById(request.getIdType()).orElse(null));
-
+            entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule())
+                    .orElseThrow(() -> new RuntimeException("Véhicule introuvable")));
         entity.setCommentaire(request.getCommentaire());
 
         return toResponse(repo.save(entity));
     }
 
     @Transactional
-    public AffectationResponse valider(Integer id) {
+    public AffectationResponse valider(Integer id, ValidationRequest request) {
         Affectation entity = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Affectation introuvable"));
 
         saveHistorique(entity);
 
-        // Auto-assign vehicle if none assigned
-        if (entity.getVehicule() == null && entity.getDateTransport() != null && entity.getHeureTransport() != null) {
-            Vehicule vehiculeDisponible = findVehiculeDisponible(entity.getDateTransport().getId(),
-                    entity.getHeureTransport().getId());
-            if (vehiculeDisponible != null) {
-                entity.setVehicule(vehiculeDisponible);
+        if (request != null && request.getIdVehicule() != null) {
+            entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule())
+                    .orElseThrow(() -> new RuntimeException("Véhicule introuvable")));
+        } else if (request != null && Boolean.TRUE.equals(request.getReassign())) {
+            Vehicule vehiculeAuto = findVehiculeDisponible(
+                    entity.getDateTransport().getId(), entity.getHeureTransport().getId());
+            if (vehiculeAuto == null) {
+                throw new RuntimeException("Aucun véhicule disponible pour cette date et heure");
             }
+            entity.setVehicule(vehiculeAuto);
         }
 
         entity.setEstValidee(true);
@@ -136,14 +154,10 @@ public class AffectationService {
     }
 
     private Vehicule findVehiculeDisponible(Integer idDate, Integer idHeure) {
-        List<Vehicule> vehicules = vehiculeRepo.findByActifTrue();
-        for (Vehicule v : vehicules) {
-            long count = repo.countByVehiculeAndDateAndHeure(v.getId(), idDate, idHeure);
-            if (count < v.getNombrePlaces()) {
-                return v;
-            }
-        }
-        return null;
+        return vehiculeRepo.findByActifTrue().stream()
+                .filter(v -> repo.countByVehiculeAndDateAndHeure(v.getId(), idDate, idHeure) < v.getNombrePlaces())
+                .findFirst()
+                .orElse(null);
     }
 
     public AffectationStatsResponse getStats() {

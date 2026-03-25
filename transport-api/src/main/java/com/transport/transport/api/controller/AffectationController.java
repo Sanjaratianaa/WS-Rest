@@ -1,10 +1,12 @@
 package com.transport.transport.api.controller;
 
 import com.transport.transport.api.dto.request.AffectationRequest;
+import com.transport.transport.api.dto.request.ValidationRequest;
 import com.transport.transport.api.dto.response.AffectationResponse;
 import com.transport.transport.api.dto.response.AffectationStatsResponse;
 import com.transport.transport.api.service.AffectationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +33,13 @@ public class AffectationController {
     @GetMapping
     @Operation(summary = "Lister les affectations avec filtres optionnels")
     public ResponseEntity<CollectionModel<AffectationResponse>> findAll(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) Integer idVehicule,
-            @RequestParam(required = false) Integer idEmploye,
-            @RequestParam(required = false) Integer idSite,
-            @RequestParam(required = false) Boolean estValidee,
-            @RequestParam(required = false) Integer idDepartement,
-            Authentication authentication) {
+            @Parameter(description = "Filtrer par date (YYYY-MM-DD)", required = false) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "Filtrer par véhicule", required = false) @RequestParam(required = false) Integer idVehicule,
+            @Parameter(description = "Filtrer par employé", required = false) @RequestParam(required = false) Integer idEmploye,
+            @Parameter(description = "Filtrer par site", required = false) @RequestParam(required = false) Integer idSite,
+            @Parameter(description = "Filtrer par statut de validation", required = false) @RequestParam(required = false) Boolean estValidee,
+            @Parameter(description = "Filtrer par département", required = false) @RequestParam(required = false) Integer idDepartement,
+            @Parameter(hidden = true) Authentication authentication) {
 
         List<AffectationResponse> list;
 
@@ -58,7 +60,7 @@ public class AffectationController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtenir une affectation par ID")
-    public ResponseEntity<AffectationResponse> findById(@PathVariable Integer id, Authentication authentication) {
+    public ResponseEntity<AffectationResponse> findById(@PathVariable Integer id, @Parameter(hidden = true) Authentication authentication) {
         AffectationResponse response = service.findById(id);
 
         boolean isAdmin = authentication.getAuthorities().stream()
@@ -76,7 +78,7 @@ public class AffectationController {
     @PostMapping
     @Operation(summary = "Créer une demande d'affectation")
     public ResponseEntity<AffectationResponse> create(@Valid @RequestBody AffectationRequest request,
-                                                       Authentication authentication) {
+                                                       @Parameter(hidden = true) Authentication authentication) {
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         Integer currentEmployeId = (Integer) authentication.getDetails();
@@ -101,9 +103,10 @@ public class AffectationController {
 
     @PutMapping("/{id}/valider")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Valider une affectation (affectation automatique de véhicule si disponible)")
-    public ResponseEntity<AffectationResponse> valider(@PathVariable Integer id) {
-        AffectationResponse response = service.valider(id);
+    @Operation(summary = "Valider une affectation (optionnel: changer véhicule ou reassign auto)")
+    public ResponseEntity<AffectationResponse> valider(@PathVariable Integer id,
+                                                        @RequestBody(required = false) @Valid ValidationRequest request) {
+        AffectationResponse response = service.valider(id, request);
         addLinks(response);
         return ResponseEntity.ok(response);
     }

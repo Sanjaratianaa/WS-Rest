@@ -10,4 +10,6 @@ public interface AdresseEmployeRepository extends JpaRepository<AdresseEmploye, 
     List<AdresseEmploye> findByEmployeIdAndActifTrue(Integer idEmploye);
 
     Optional<AdresseEmploye> findByEmployeIdAndEstPrincipaleTrue(Integer idEmploye);
+
+    Optional<AdresseEmploye> findByEmployeIdAndEstPrincipaleTrueAndActifTrue(Integer idEmploye);
 }

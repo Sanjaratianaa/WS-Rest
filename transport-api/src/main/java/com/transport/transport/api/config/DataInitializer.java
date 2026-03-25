@@ -69,19 +69,19 @@ public class DataInitializer implements CommandLineRunner {
         // Authentification
         authRepo.save(Authentification.builder()
                 .email("admin@transport.com")
-                .motDePasse(passwordEncoder.encode("admin123"))
+                .motDePasse(passwordEncoder.encode("Admin@1234"))
                 .employe(admin).role(roleAdmin).build());
         authRepo.save(Authentification.builder()
                 .email("jean@transport.com")
-                .motDePasse(passwordEncoder.encode("emp123"))
+                .motDePasse(passwordEncoder.encode("Emp@1234"))
                 .employe(emp1).role(roleEmploye).build());
         authRepo.save(Authentification.builder()
                 .email("marie@transport.com")
-                .motDePasse(passwordEncoder.encode("emp123"))
+                .motDePasse(passwordEncoder.encode("Emp@1234"))
                 .employe(emp2).role(roleEmploye).build());
         authRepo.save(Authentification.builder()
                 .email("paul@transport.com")
-                .motDePasse(passwordEncoder.encode("emp123"))
+                .motDePasse(passwordEncoder.encode("Emp@1234"))
                 .employe(emp3).role(roleEmploye).build());
         log.info("Comptes créés : admin@transport.com / admin123, jean/marie/paul@transport.com / emp123");
 
