@@ -51,15 +51,22 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, String role) {
         if (authRepo.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Cet email est déjà utilisé");
         }
 
+        if (!request.getMotDePasse().equals(request.getConfirmationMotDePasse()))
+            throw new RuntimeException("Les mots de passe ne correspondent pas");
+
+        // Génération automatique du matricule
+        String prefix = role.equals("ADMIN") ? "ADM" : "EMP";
+        String matricule = genererMatricule(prefix);
+
         Employe employe = Employe.builder()
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
-                .matricule(request.getMatricule())
+                .matricule(matricule)
                 .telephone(request.getTelephone())
                 .build();
 
@@ -70,8 +77,8 @@ public class AuthService {
 
         employe = employeRepo.save(employe);
 
-        Role roleEmploye = roleRepo.findByLibelle("EMPLOYE")
-                .orElseThrow(() -> new RuntimeException("Rôle EMPLOYE introuvable"));
+        Role roleEmploye = roleRepo.findByLibelle(role)
+                .orElseThrow(() -> new RuntimeException("Rôle " + role +" introuvable"));
 
         Authentification auth = Authentification.builder()
                 .email(request.getEmail())
@@ -91,5 +98,12 @@ public class AuthService {
                 .idEmploye(employe.getId())
                 .nomComplet(employe.getNom() + " " + employe.getPrenom())
                 .build();
+    }
+
+    private String genererMatricule(String prefix) {
+        // Compte le nombre d'employés avec ce prefix
+        long count = employeRepo.countByMatriculeStartingWith(prefix);
+        // Génère le prochain numéro avec padding (EMP001, EMP002, ...)
+        return String.format("%s%03d", prefix, count + 1);
     }
 }

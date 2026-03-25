@@ -26,8 +26,14 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Inscription nouvel utilisateur (rôle EMPLOYE par défaut)")
+    @Operation(summary = "Inscription nouvel utilisateur (rôle EMPLOYE)")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+        return ResponseEntity.ok(authService.register(request, "EMPLOYE"));
+    }
+
+    @PostMapping("/admin-register")
+    @Operation(summary = "Inscription nouvel utilisateur (rôle ADMIN)")
+    public ResponseEntity<AuthResponse> registerAdmin(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request, "ADMIN"));
     }
 }
