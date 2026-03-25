@@ -39,6 +39,30 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint((request, response, authException) -> {
+                        response.setContentType("application/json");
+                        response.setStatus(401);
+                        response.getWriter().write("""
+                    {
+                        "message": "Non authentifie - token manquant ou invalide",
+                        "status": 401,
+                        "timestamp": "%s"
+                    }
+                """.formatted(java.time.LocalDateTime.now()));
+                    })
+                    .accessDeniedHandler((request, response, accessDeniedException) -> {
+                        response.setContentType("application/json");
+                        response.setStatus(403);
+                        response.getWriter().write("""
+                    {
+                        "message": "Accès refusé - permissions insuffisantes",
+                        "status": 403,
+                        "timestamp": "%s"
+                    }
+                """.formatted(java.time.LocalDateTime.now()));
+                    })
+            )
             .headers(headers -> headers.frameOptions(fo -> fo.sameOrigin()))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
