@@ -34,8 +34,14 @@ public class VehiculeService {
 
     @Transactional
     public VehiculeResponse create(VehiculeRequest request) {
+        String matricule = request.getMatricule().toUpperCase();
+
+        if (repo.existsByMatriculeAndActifTrue(matricule)) {
+            throw new RuntimeException("Un véhicule actif avec le matricule " + matricule + " existe déjà");
+        }
+
         Vehicule entity = Vehicule.builder()
-                .matricule(request.getMatricule())
+                .matricule(matricule)
                 .nombrePlaces(request.getNombrePlaces())
                 .build();
         return toResponse(repo.save(entity));
@@ -43,9 +49,15 @@ public class VehiculeService {
 
     @Transactional
     public VehiculeResponse update(Integer id, VehiculeRequest request) {
+        String matricule = request.getMatricule().toUpperCase();
         Vehicule entity = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Véhicule introuvable"));
-        entity.setMatricule(request.getMatricule());
+
+        if (repo.existsByMatriculeAndActifTrueAndIdNot(matricule, id)) {
+            throw new RuntimeException("Un véhicule actif avec le matricule " + matricule + " existe déjà");
+        }
+
+        entity.setMatricule(matricule);
         entity.setNombrePlaces(request.getNombrePlaces());
         return toResponse(repo.save(entity));
     }

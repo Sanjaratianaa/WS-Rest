@@ -7,4 +7,8 @@ import java.util.List;
 public interface VehiculeRepository extends JpaRepository<Vehicule, Integer> {
 
     List<Vehicule> findByActifTrue();
+
+    boolean existsByMatriculeAndActifTrue(String matricule);
+
+    boolean existsByMatriculeAndActifTrueAndIdNot(String matricule, Integer id);
 }

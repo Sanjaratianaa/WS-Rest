@@ -36,6 +36,7 @@ public class VehiculeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Obtenir un véhicule par ID")
     public ResponseEntity<VehiculeResponse> findById(@PathVariable Integer id) {
         VehiculeResponse response = service.findById(id);
