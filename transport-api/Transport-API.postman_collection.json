@@ -6,6 +6,7 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "deployUrl", "value": "https://transport-api-q55w.onrender.com" },
     { "key": "token", "value": "" },
     { "key": "adminToken", "value": "" },
     { "key": "employeToken", "value": "" }
