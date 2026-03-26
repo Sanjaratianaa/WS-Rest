@@ -2,6 +2,8 @@ package com.transport.transport.api.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -17,7 +19,7 @@ public class HistoriqueAffectation {
     @JoinColumn(name = "id_affectation")
     private Affectation affectation;
 
-    private Integer idDate;
+    private LocalDate date;
     private Integer idEmploye;
     private Integer idAdresse;
     private Integer idTypeTransport;

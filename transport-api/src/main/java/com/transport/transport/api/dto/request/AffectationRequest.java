@@ -5,12 +5,15 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.time.LocalDate;
+import java.util.Date;
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class AffectationRequest {
 
     @NotNull(message = "La date est obligatoire.")
-    @Positive(message = "L'identifiant de la date doit être un entier positif.")
-    private Integer idDate;
+    @Positive(message = "La valeur de la date doit être supérieur ou égal à la date du Jour.")
+    private LocalDate date;
 
     @Positive(message = "L'identifiant de l'employé doit être un entier positif.")
     private Integer idEmploye;

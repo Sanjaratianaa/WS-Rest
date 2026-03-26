@@ -2,7 +2,10 @@ package com.transport.transport.api.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Table(name = "affectation")
@@ -13,9 +16,8 @@ public class Affectation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_date")
-    private DateTransport dateTransport;
+    @JoinColumn(name = "date_transport")
+    private LocalDate dateTransport;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_employe")

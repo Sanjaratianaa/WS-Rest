@@ -16,11 +16,10 @@ public interface AffectationRepository extends JpaRepository<Affectation, Intege
     List<Affectation> findByVehiculeIdAndEstArchiveFalse(Integer idVehicule);
 
     @Query("SELECT a FROM Affectation a " +
-           "LEFT JOIN a.dateTransport dt " +
            "LEFT JOIN a.employe e " +
            "LEFT JOIN e.departement d " +
            "WHERE a.estArchive = false " +
-           "AND (:date IS NULL OR dt.dateJour = :date) " +
+           "AND (:date IS NULL OR a.dateTransport = :date) " +
            "AND (:idVehicule IS NULL OR a.vehicule.id = :idVehicule) " +
            "AND (:idEmploye IS NULL OR a.employe.id = :idEmploye) " +
            "AND (:idSite IS NULL OR a.site.id = :idSite) " +
@@ -36,11 +35,11 @@ public interface AffectationRepository extends JpaRepository<Affectation, Intege
 
     @Query("SELECT COUNT(a) FROM Affectation a " +
            "WHERE a.vehicule.id = :idVehicule " +
-           "AND a.dateTransport.id = :idDate " +
+           "AND a.dateTransport = :date " +
            "AND a.heureTransport.id = :idHeure " +
            "AND a.estArchive = false")
     long countByVehiculeAndDateAndHeure(
             @Param("idVehicule") Integer idVehicule,
-            @Param("idDate") Integer idDate,
+            @Param("date") LocalDate date,
             @Param("idHeure") Integer idHeure);
 }

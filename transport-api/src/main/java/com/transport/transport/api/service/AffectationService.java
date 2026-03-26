@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
 public class AffectationService {
 
     private final AffectationRepository repo;
-    private final DateTransportRepository dateTransportRepo;
     private final EmployeRepository employeRepo;
     private final AdresseEmployeRepository adresseRepo;
     private final TypeTransportRepository typeTransportRepo;
@@ -60,19 +60,16 @@ public class AffectationService {
                 .orElseThrow(() -> new RuntimeException(
                         "Vous devez avoir une adresse principale pour faire une demande de transport"));
 
-        DateTransport dateTransport = dateTransportRepo.findById(request.getIdDate())
-                .orElseThrow(() -> new RuntimeException("DateTransport introuvable"));
-
         HeureTransport heureTransport = heureTransportRepo.findById(request.getIdHeureTransport())
                 .orElseThrow(() -> new RuntimeException("HeureTransport introuvable"));
 
         Vehicule vehicule = request.getIdVehicule() != null
                 ? vehiculeRepo.findById(request.getIdVehicule())
                 .orElseThrow(() -> new RuntimeException("Véhicule introuvable"))
-                : findVehiculeDisponible(dateTransport.getId(), heureTransport.getId());
+                : findVehiculeDisponible(request.getDate(), heureTransport.getId());
 
         Affectation entity = Affectation.builder()
-                .dateTransport(dateTransport)
+                .dateTransport(request.getDate())
                 .employe(employe)
                 .adresse(adresse)
                 .typeTransport(typeTransportRepo.findById(request.getIdTypeTransport())
@@ -99,9 +96,8 @@ public class AffectationService {
 
         saveHistorique(entity);
 
-        if (request.getIdDate() != null)
-            entity.setDateTransport(dateTransportRepo.findById(request.getIdDate())
-                    .orElseThrow(() -> new RuntimeException("DateTransport introuvable")));
+        if (request.getDate() != null)
+            entity.setDateTransport(request.getDate());
         if (request.getIdEmploye() != null)
             entity.setEmploye(employeRepo.findById(request.getIdEmploye())
                     .orElseThrow(() -> new RuntimeException("Employé introuvable")));
@@ -140,7 +136,7 @@ public class AffectationService {
                     .orElseThrow(() -> new RuntimeException("Véhicule introuvable")));
         } else if (request != null && Boolean.TRUE.equals(request.getReassign())) {
             Vehicule vehiculeAuto = findVehiculeDisponible(
-                    entity.getDateTransport().getId(), entity.getHeureTransport().getId());
+                    entity.getDateTransport(), entity.getHeureTransport().getId());
             if (vehiculeAuto == null) {
                 throw new RuntimeException("Aucun véhicule disponible pour cette date et heure");
             }
@@ -153,9 +149,9 @@ public class AffectationService {
         return toResponse(repo.save(entity));
     }
 
-    private Vehicule findVehiculeDisponible(Integer idDate, Integer idHeure) {
+    private Vehicule findVehiculeDisponible(LocalDate date, Integer idHeure) {
         return vehiculeRepo.findByActifTrue().stream()
-                .filter(v -> repo.countByVehiculeAndDateAndHeure(v.getId(), idDate, idHeure) < v.getNombrePlaces())
+                .filter(v -> repo.countByVehiculeAndDateAndHeure(v.getId(), date, idHeure) < v.getNombrePlaces())
                 .findFirst()
                 .orElse(null);
     }
@@ -203,7 +199,7 @@ public class AffectationService {
     private void saveHistorique(Affectation a) {
         HistoriqueAffectation h = HistoriqueAffectation.builder()
                 .affectation(a)
-                .idDate(a.getDateTransport() != null ? a.getDateTransport().getId() : null)
+                .date(a.getDateTransport() != null ? a.getDateTransport() : null)
                 .idEmploye(a.getEmploye() != null ? a.getEmploye().getId() : null)
                 .idAdresse(a.getAdresse() != null ? a.getAdresse().getId() : null)
                 .idTypeTransport(a.getTypeTransport() != null ? a.getTypeTransport().getId() : null)
@@ -222,8 +218,7 @@ public class AffectationService {
     public AffectationResponse toResponse(Affectation a) {
         return AffectationResponse.builder()
                 .id(a.getId())
-                .idDate(a.getDateTransport() != null ? a.getDateTransport().getId() : null)
-                .dateJour(a.getDateTransport() != null ? a.getDateTransport().getDateJour() : null)
+                .dateJour(a.getDateTransport() != null ? a.getDateTransport() : null)
                 .idEmploye(a.getEmploye() != null ? a.getEmploye().getId() : null)
                 .nomEmploye(a.getEmploye() != null ? a.getEmploye().getNom() : null)
                 .prenomEmploye(a.getEmploye() != null ? a.getEmploye().getPrenom() : null)

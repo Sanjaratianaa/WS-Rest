@@ -27,7 +27,6 @@ public class DataInitializer implements CommandLineRunner {
     private final VehiculeRepository vehiculeRepo;
     private final TypeTransportRepository typeTransportRepo;
     private final HeureTransportRepository heureTransportRepo;
-    private final DateTransportRepository dateTransportRepo;
     private final TypeAffectationRepository typeAffectationRepo;
     private final AffectationRepository affectationRepo;
     private final PasswordEncoder passwordEncoder;
@@ -105,8 +104,8 @@ public class DataInitializer implements CommandLineRunner {
                 .nom("Siège").adresse("Galaxy, Andraharo")
                 .latitude(new BigDecimal("-18.880000000")).longitude(new BigDecimal("47.540000000")).build());
         Site usine = siteRepo.save(Site.builder()
-                .nom("Usine").adresse("Zone Industrielle Antsirabe")
-                .latitude(new BigDecimal("-19.870000000")).longitude(new BigDecimal("47.030000000")).build());
+                .nom("Usine").adresse("Be ys outsourcing services, Tsiadana")
+                .latitude(new BigDecimal("48.826636")).longitude(new BigDecimal("2.405284")).build());
         log.info("Sites créés : Siège, Usine");
 
         // Véhicules
@@ -132,15 +131,6 @@ public class DataInitializer implements CommandLineRunner {
                 .heure(LocalTime.of(22, 0)).libelle("Nuit").build());
         log.info("Heures transport : Matin(7h), Soir(17h), Nuit(22h)");
 
-        // Dates de transport
-        DateTransport today = dateTransportRepo.save(DateTransport.builder()
-                .dateJour(LocalDate.now()).build());
-        DateTransport tomorrow = dateTransportRepo.save(DateTransport.builder()
-                .dateJour(LocalDate.now().plusDays(1)).build());
-        DateTransport dayAfter = dateTransportRepo.save(DateTransport.builder()
-                .dateJour(LocalDate.now().plusDays(2)).build());
-        log.info("Dates transport : aujourd'hui, demain, après-demain");
-
         // Types d'affectation
         TypeAffectation auto = typeAffectationRepo.save(TypeAffectation.builder().libelle("Automatique").build());
         TypeAffectation manuel = typeAffectationRepo.save(TypeAffectation.builder().libelle("Manuel").build());
@@ -148,25 +138,25 @@ public class DataInitializer implements CommandLineRunner {
 
         // Affectations de test
         affectationRepo.save(Affectation.builder()
-                .dateTransport(today).employe(emp1).adresse(adr1)
+                .dateTransport(LocalDate.now().plusDays(1)).employe(emp1).adresse(adr1)
                 .typeTransport(aller).site(siege).vehicule(v1)
                 .heureTransport(matin).typeAffectation(manuel)
                 .estValidee(true).commentaire("Trajet matin validé").build());
 
         affectationRepo.save(Affectation.builder()
-                .dateTransport(today).employe(emp2).adresse(adr2)
+                .dateTransport(LocalDate.now().plusDays(1)).employe(emp2).adresse(adr2)
                 .typeTransport(aller).site(siege).vehicule(v1)
                 .heureTransport(matin).typeAffectation(manuel)
                 .estValidee(true).commentaire("Trajet matin validé").build());
 
         affectationRepo.save(Affectation.builder()
-                .dateTransport(today).employe(emp1).adresse(adr1)
+                .dateTransport(LocalDate.now()).employe(emp1).adresse(adr1)
                 .typeTransport(retour).site(siege).vehicule(v1)
                 .heureTransport(soir).typeAffectation(auto)
                 .estValidee(null).commentaire("En attente de validation").build());
 
         affectationRepo.save(Affectation.builder()
-                .dateTransport(tomorrow).employe(emp3).adresse(adr3)
+                .dateTransport(LocalDate.now().plusDays(1)).employe(emp3).adresse(adr3)
                 .typeTransport(aller).site(siege)
                 .heureTransport(matin).typeAffectation(auto)
                 .estValidee(null).commentaire("Demande sans véhicule - à valider").build());

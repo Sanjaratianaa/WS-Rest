@@ -86,7 +86,7 @@ public class VehiculeService {
         // Group by date + heure
         Map<String, List<Affectation>> grouped = affectations.stream()
                 .collect(Collectors.groupingBy(a -> {
-                    String dateKey = a.getDateTransport() != null ? a.getDateTransport().getDateJour().toString() : "null";
+                    String dateKey = a.getDateTransport() != null ? a.getDateTransport().toString() : "null";
                     String heureKey = a.getHeureTransport() != null ? a.getHeureTransport().getId().toString() : "null";
                     return dateKey + "|" + heureKey;
                 }));
@@ -106,7 +106,6 @@ public class VehiculeService {
                     .toList();
 
             return VehiculeTrajetResponse.TrajetGroupe.builder()
-                    .date(first.getDateTransport() != null ? first.getDateTransport().getDateJour() : null)
                     .heure(first.getHeureTransport() != null ? first.getHeureTransport().getHeure() : null)
                     .libelleHeure(first.getHeureTransport() != null ? first.getHeureTransport().getLibelle() : null)
                     .nomSite(first.getSite() != null ? first.getSite().getNom() : null)

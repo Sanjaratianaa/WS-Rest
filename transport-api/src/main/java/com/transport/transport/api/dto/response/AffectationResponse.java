@@ -11,7 +11,6 @@ public class AffectationResponse extends RepresentationModel<AffectationResponse
 
     private Integer id;
 
-    private Integer idDate;
     private LocalDate dateJour;
 
     private Integer idEmploye;
