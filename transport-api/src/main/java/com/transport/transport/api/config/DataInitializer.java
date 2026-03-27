@@ -53,15 +53,19 @@ public class DataInitializer implements CommandLineRunner {
         // Employés
         Employe admin = employeRepo.save(Employe.builder()
                 .nom("Admin").prenom("Super").matricule("ADM001")
+                .estBeneficiaire(true)
                 .telephone("0340000001").departement(depIT).build());
         Employe emp1 = employeRepo.save(Employe.builder()
                 .nom("Rakoto").prenom("Jean").matricule("EMP001")
+                .estBeneficiaire(true)
                 .telephone("0340000002").departement(depIT).build());
         Employe emp2 = employeRepo.save(Employe.builder()
                 .nom("Rabe").prenom("Marie").matricule("EMP002")
+                .estBeneficiaire(true)
                 .telephone("0340000003").departement(depRH).build());
         Employe emp3 = employeRepo.save(Employe.builder()
                 .nom("Randria").prenom("Paul").matricule("EMP003")
+                .estBeneficiaire(false)
                 .telephone("0340000004").departement(depFin).build());
         log.info("Employés créés : Admin, Rakoto, Rabe, Randria");
 
@@ -153,13 +157,13 @@ public class DataInitializer implements CommandLineRunner {
                 .dateTransport(LocalDate.now()).employe(emp1).adresse(adr1)
                 .typeTransport(retour).site(siege).vehicule(v1)
                 .heureTransport(soir).typeAffectation(auto)
-                .estValidee(null).commentaire("En attente de validation").build());
+                .commentaire("En attente de validation").build());
 
         affectationRepo.save(Affectation.builder()
                 .dateTransport(LocalDate.now().plusDays(1)).employe(emp3).adresse(adr3)
                 .typeTransport(aller).site(siege)
                 .heureTransport(matin).typeAffectation(auto)
-                .estValidee(null).commentaire("Demande sans véhicule - à valider").build());
+                .commentaire("Demande sans véhicule - à valider").build());
 
         log.info("Affectations de test créées");
         log.info("=== Initialisation terminée ===");

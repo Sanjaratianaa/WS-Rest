@@ -34,11 +34,13 @@ public class EmployeService {
 
     @Transactional
     public EmployeResponse create(EmployeRequest request) {
+        String matricule = genererMatricule("EMP");
         Employe entity = Employe.builder()
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
-                .matricule(request.getMatricule())
+                .matricule(matricule)
                 .telephone(request.getTelephone())
+                .estBeneficiaire(request.getEstBeneficiaireTransport())
                 .build();
 
         if (request.getIdDepartement() != null) {
@@ -55,9 +57,9 @@ public class EmployeService {
                 .orElseThrow(() -> new RuntimeException("Employé introuvable"));
         entity.setNom(request.getNom());
         entity.setPrenom(request.getPrenom());
-        entity.setMatricule(request.getMatricule());
         entity.setTelephone(request.getTelephone());
-
+        entity.setEstBeneficiaire(request.getEstBeneficiaireTransport());
+        
         if (request.getIdDepartement() != null) {
             entity.setDepartement(departementRepo.findById(request.getIdDepartement())
                     .orElseThrow(() -> new RuntimeException("Département introuvable")));
@@ -85,8 +87,16 @@ public class EmployeService {
                 .idDepartement(e.getDepartement() != null ? e.getDepartement().getId() : null)
                 .nomDepartement(e.getDepartement() != null ? e.getDepartement().getNom() : null)
                 .actif(e.getActif())
+                .estBeneficiareTransport(e.getEstBeneficiaire())
                 .dateInsertion(e.getDateInsertion())
                 .dateDesactivation(e.getDateDesactivation())
                 .build();
+    }
+
+    private String genererMatricule(String prefix) {
+        // Compte le nombre d'employés avec ce prefix
+        long count = repo.countByMatriculeStartingWith(prefix);
+        // Génère le prochain numéro avec padding (EMP001, EMP002, ...)
+        return String.format("%s%03d", prefix, count + 1);
     }
 }

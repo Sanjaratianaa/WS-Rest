@@ -34,6 +34,9 @@ public class Employe {
     @Builder.Default
     private Boolean actif = true;
 
+    @Column(nullable = false)
+    private Boolean estBeneficiaire;
+
     @Column(updatable = false)
     @Builder.Default
     private LocalDateTime dateInsertion = LocalDateTime.now();

@@ -15,6 +15,7 @@ public class EmployeResponse extends RepresentationModel<EmployeResponse> {
     private Integer idDepartement;
     private String nomDepartement;
     private Boolean actif;
+    private Boolean estBeneficiareTransport;
     private LocalDateTime dateInsertion;
     private LocalDateTime dateDesactivation;
 }

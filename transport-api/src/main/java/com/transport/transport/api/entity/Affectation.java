@@ -43,7 +43,8 @@ public class Affectation {
     @JoinColumn(name = "id_heure_transport")
     private HeureTransport heureTransport;
 
-    private Boolean estValidee;
+    @Builder.Default
+    private Boolean estValidee = false;
 
     @Column(length = 255)
     private String commentaire;

@@ -48,7 +48,7 @@ public class AffectationController {
 
         if (!isAdmin) {
             Integer currentEmployeId = (Integer) authentication.getDetails();
-            list = service.findByEmploye(currentEmployeId);
+            list = service.findWithFilters(date, idVehicule, currentEmployeId, idSite, estValidee, null);
         } else {
             list = service.findWithFilters(date, idVehicule, idEmploye, idSite, estValidee, idDepartement);
         }
