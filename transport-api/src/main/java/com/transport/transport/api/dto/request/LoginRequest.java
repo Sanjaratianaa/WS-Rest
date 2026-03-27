@@ -9,10 +9,9 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class LoginRequest {
 
-    @NotBlank(message = "L'email est obligatoire.")
-    @Email(message = "L'adresse email n'est pas valide.")
-    @Size(max = 255, message = "L'email ne doit pas dépasser 255 caractères.")
-    private String email;
+    @NotBlank(message = "Le matricule est obligatoire.")
+    @Size(min = 4, max = 20, message = "Le matricule doit contenir entre 4 et 20 caractères.")
+    private String matricule;
 
     @NotBlank(message = "Le mot de passe est obligatoire.")
     @Size(min = 8, message = "Le mot de passe doit contenir au moins 8 caractères.")

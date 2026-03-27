@@ -1,6 +1,7 @@
 package com.transport.transport.api.service;
 
 import com.transport.transport.api.dto.request.LoginRequest;
+import com.transport.transport.api.dto.request.RegisterAdminRequest;
 import com.transport.transport.api.dto.request.RegisterRequest;
 import com.transport.transport.api.dto.response.AuthResponse;
 import com.transport.transport.api.entity.Authentification;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final EmployeService employeService;
     private final AuthentificationRepository authRepo;
     private final EmployeRepository employeRepo;
     private final RoleRepository roleRepo;
@@ -28,7 +30,10 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     public AuthResponse login(LoginRequest request) {
-        Authentification auth = authRepo.findByEmailAndActifTrue(request.getEmail())
+        Employe employe = employeRepo.getByMatricule(request.getMatricule())
+                .orElseThrow(() -> new RuntimeException("Employé non trouvé, matricule innexistant."));
+
+        Authentification auth = authRepo.findByEmployeIdAndActifTrue(employe.getMatricule())
                 .orElseThrow(() -> new RuntimeException("Email ou mot de passe incorrect"));
 
         if (!passwordEncoder.matches(request.getMotDePasse(), auth.getMotDePasse())) {
@@ -51,23 +56,56 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request, String role) {
-        if (authRepo.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Cet email est déjà utilisé");
-        }
+    public AuthResponse register(RegisterRequest request) {
+        String role = "EMPLOYE";
+
+        Employe employe = employeRepo.getByMatricule(request.getMatricule())
+                .orElseThrow(() -> new RuntimeException("Employé non trouvé, matricule innexistant."));
+
+        if (authRepo.existsByEmployeId(employe.getId()))
+            throw new RuntimeException("Un compte d'authentification existe déjà pour le matricule : " + employe.getMatricule());
+
+        if (!request.getMotDePasse().equals(request.getConfirmationMotDePasse()))
+            throw new RuntimeException("Les mots de passe ne correspondent pas.");
+
+        Role roleEmploye = roleRepo.findByLibelle(role)
+                .orElseThrow(() -> new RuntimeException("Rôle " + role +" introuvable"));
+
+        Authentification auth = Authentification.builder()
+                .motDePasse(passwordEncoder.encode(request.getMotDePasse()))
+                .employe(employe)
+                .role(roleEmploye)
+                .build();
+
+        authRepo.save(auth);
+
+        String token = jwtUtil.generateToken(employe.getMatricule(), roleEmploye.getLibelle(), employe.getId());
+
+        return AuthResponse.builder()
+                .token(token)
+                .matricule(employe.getMatricule())
+                .role(roleEmploye.getLibelle())
+                .idEmploye(employe.getId())
+                .nomComplet(employe.getNom() + " " + employe.getPrenom())
+                .build();
+    }
+
+    @Transactional
+    public AuthResponse registerAdmin(RegisterAdminRequest request) {
 
         if (!request.getMotDePasse().equals(request.getConfirmationMotDePasse()))
             throw new RuntimeException("Les mots de passe ne correspondent pas");
 
         // Génération automatique du matricule
-        String prefix = role.equals("ADMIN") ? "ADM" : "EMP";
-        String matricule = genererMatricule(prefix);
+        String prefix = "ADM";
+        String matricule = employeService.genererMatricule(prefix);
 
         Employe employe = Employe.builder()
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
                 .matricule(matricule)
                 .telephone(request.getTelephone())
+                .estBeneficiaire(true)
                 .build();
 
         if (request.getIdDepartement() != null) {
@@ -77,11 +115,11 @@ public class AuthService {
 
         employe = employeRepo.save(employe);
 
+        String role = "ADMIN";
         Role roleEmploye = roleRepo.findByLibelle(role)
                 .orElseThrow(() -> new RuntimeException("Rôle " + role +" introuvable"));
 
         Authentification auth = Authentification.builder()
-                .email(request.getEmail())
                 .motDePasse(passwordEncoder.encode(request.getMotDePasse()))
                 .employe(employe)
                 .role(roleEmploye)
@@ -89,21 +127,14 @@ public class AuthService {
 
         authRepo.save(auth);
 
-        String token = jwtUtil.generateToken(auth.getEmail(), roleEmploye.getLibelle(), employe.getId());
+        String token = jwtUtil.generateToken(employe.getMatricule(), roleEmploye.getLibelle(), employe.getId());
 
         return AuthResponse.builder()
                 .token(token)
-                .email(auth.getEmail())
+                .matricule(employe.getMatricule())
                 .role(roleEmploye.getLibelle())
                 .idEmploye(employe.getId())
                 .nomComplet(employe.getNom() + " " + employe.getPrenom())
                 .build();
-    }
-
-    private String genererMatricule(String prefix) {
-        // Compte le nombre d'employés avec ce prefix
-        long count = employeRepo.countByMatriculeStartingWith(prefix);
-        // Génère le prochain numéro avec padding (EMP001, EMP002, ...)
-        return String.format("%s%03d", prefix, count + 1);
     }
 }

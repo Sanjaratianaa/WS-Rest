@@ -1,6 +1,7 @@
 package com.transport.transport.api.controller;
 
 import com.transport.transport.api.dto.request.LoginRequest;
+import com.transport.transport.api.dto.request.RegisterAdminRequest;
 import com.transport.transport.api.dto.request.RegisterRequest;
 import com.transport.transport.api.dto.response.AuthResponse;
 import com.transport.transport.api.service.AuthService;
@@ -28,12 +29,12 @@ public class AuthController {
     @PostMapping("/register")
     @Operation(summary = "Inscription nouvel utilisateur (rôle EMPLOYE)")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request, "EMPLOYE"));
+        return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/admin-register")
     @Operation(summary = "Inscription nouvel utilisateur (rôle ADMIN)")
-    public ResponseEntity<AuthResponse> registerAdmin(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request, "ADMIN"));
+    public ResponseEntity<AuthResponse> registerAdmin(@Valid @RequestBody RegisterAdminRequest request) {
+        return ResponseEntity.ok(authService.registerAdmin(request));
     }
 }

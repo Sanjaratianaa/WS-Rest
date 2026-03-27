@@ -59,7 +59,7 @@ public class EmployeService {
         entity.setPrenom(request.getPrenom());
         entity.setTelephone(request.getTelephone());
         entity.setEstBeneficiaire(request.getEstBeneficiaireTransport());
-        
+
         if (request.getIdDepartement() != null) {
             entity.setDepartement(departementRepo.findById(request.getIdDepartement())
                     .orElseThrow(() -> new RuntimeException("Département introuvable")));
@@ -93,7 +93,7 @@ public class EmployeService {
                 .build();
     }
 
-    private String genererMatricule(String prefix) {
+    public String genererMatricule(String prefix) {
         // Compte le nombre d'employés avec ce prefix
         long count = repo.countByMatriculeStartingWith(prefix);
         // Génère le prochain numéro avec padding (EMP001, EMP002, ...)

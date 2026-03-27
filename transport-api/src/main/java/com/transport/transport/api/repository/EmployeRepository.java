@@ -1,6 +1,7 @@
 package com.transport.transport.api.repository;
 
 import com.transport.transport.api.entity.Employe;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +17,6 @@ public interface EmployeRepository extends JpaRepository<Employe, Integer> {
     List<Employe> findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCase(String nom, String prenom);
 
     long countByMatriculeStartingWith(String prefix);
+
+    Optional<Employe> getByMatricule(@NotBlank(message = "Le matricule est obligatoire") String matricule);
 }

@@ -13,15 +13,12 @@ public class Authentification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, unique = true, length = 150)
-    private String email;
-
-    @Column(nullable = false, length = 255)
-    private String motDePasse;
-
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_employe")
     private Employe employe;
+
+    @Column(nullable = false, length = 255)
+    private String motDePasse;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_role")
