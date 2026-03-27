@@ -31,24 +31,24 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         Employe employe = employeRepo.getByMatricule(request.getMatricule())
-                .orElseThrow(() -> new RuntimeException("Employé non trouvé, matricule innexistant."));
+                .orElseThrow(() -> new RuntimeException("Matricule incorrect"));
 
-        Authentification auth = authRepo.findByEmployeIdAndActifTrue(employe.getMatricule())
-                .orElseThrow(() -> new RuntimeException("Email ou mot de passe incorrect"));
+        Authentification auth = authRepo.findByEmployeIdAndActifTrue(employe.getId())
+                .orElseThrow(() -> new RuntimeException("Matricule ou mot de passe incorrect"));
 
         if (!passwordEncoder.matches(request.getMotDePasse(), auth.getMotDePasse())) {
             throw new RuntimeException("Email ou mot de passe incorrect");
         }
 
         String token = jwtUtil.generateToken(
-                auth.getEmail(),
+                employe.getMatricule(),
                 auth.getRole().getLibelle(),
                 auth.getEmploye().getId()
         );
 
         return AuthResponse.builder()
                 .token(token)
-                .email(auth.getEmail())
+                .matricule(employe.getMatricule())
                 .role(auth.getRole().getLibelle())
                 .idEmploye(auth.getEmploye().getId())
                 .nomComplet(auth.getEmploye().getNom() + " " + auth.getEmploye().getPrenom())
