@@ -23,15 +23,18 @@ import java.util.List;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
-@RequestMapping("/api/affectations")
+@RequestMapping("/api/demandeTransports")
 @RequiredArgsConstructor
-@Tag(name = "Affectations")
+@Tag(name = "DemandeTransports")
 public class AffectationController {
 
     private final AffectationService service;
 
     @GetMapping
-    @Operation(summary = "Lister les affectations avec filtres optionnels")
+    @Operation(
+        summary = "Lister les demandes de transport",
+        description = "Retourne toutes les demandes de transport. Un ADMIN peut filtrer par date, véhicule, employé, site, statut et département. Un EMPLOYÉ ne voit que ses propres demandes."
+    )
     public ResponseEntity<CollectionModel<AffectationResponse>> findAll(
             @Parameter(description = "Filtrer par date (YYYY-MM-DD)", required = false) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @Parameter(description = "Filtrer par véhicule", required = false) @RequestParam(required = false) Integer idVehicule,
@@ -59,7 +62,7 @@ public class AffectationController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Obtenir une affectation par ID")
+    @Operation(summary = "Obtenir un détail d'une demande de transport par ID")
     public ResponseEntity<AffectationResponse> findById(@PathVariable Integer id, @Parameter(hidden = true) Authentication authentication) {
         AffectationResponse response = service.findById(id);
 
@@ -76,7 +79,7 @@ public class AffectationController {
     }
 
     @PostMapping
-    @Operation(summary = "Créer une demande d'affectation")
+    @Operation(summary = "Créer une demande de transport")
     public ResponseEntity<AffectationResponse> create(@Valid @RequestBody AffectationRequest request,
                                                        @Parameter(hidden = true) Authentication authentication) {
         boolean isAdmin = authentication.getAuthorities().stream()
@@ -94,7 +97,7 @@ public class AffectationController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Modifier une affectation")
+    @Operation(summary = "Modifier une demande de transport")
     public ResponseEntity<AffectationResponse> update(@PathVariable Integer id, @Valid @RequestBody AffectationRequest request) {
         AffectationResponse response = service.update(id, request);
         addLinks(response);
@@ -103,7 +106,7 @@ public class AffectationController {
 
     @PutMapping("/{id}/valider")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Valider une affectation (optionnel: changer véhicule ou reassign auto)")
+    @Operation(summary = "Valider un demande de transport (optionnel: changer véhicule ou reassign auto)")
     public ResponseEntity<AffectationResponse> valider(@PathVariable Integer id,
                                                         @RequestBody(required = false) @Valid ValidationRequest request) {
         AffectationResponse response = service.valider(id, request);
@@ -113,7 +116,7 @@ public class AffectationController {
 
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Statistiques des affectations")
+    @Operation(summary = "Statistiques globals des transports")
     public ResponseEntity<AffectationStatsResponse> getStats() {
         return ResponseEntity.ok(service.getStats());
     }
