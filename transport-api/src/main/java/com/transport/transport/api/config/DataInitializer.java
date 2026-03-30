@@ -167,7 +167,7 @@ public class DataInitializer implements CommandLineRunner {
 
         log.info("Affectations de test créées");
         log.info("=== Initialisation terminée ===");
-        log.info("Swagger UI : http://localhost:8080/swagger-ui.html");
-        log.info("H2 Console : http://localhost:8080/h2-console");
+        log.info("Swagger UI : http://localhost:9090/swagger-ui.html");
+        log.info("H2 Console : http://localhost:9090/h2-console");
     }
 }

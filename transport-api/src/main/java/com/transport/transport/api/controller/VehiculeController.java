@@ -5,6 +5,8 @@ import com.transport.transport.api.dto.response.VehiculeResponse;
 import com.transport.transport.api.dto.response.VehiculeTrajetResponse;
 import com.transport.transport.api.service.VehiculeService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,10 @@ public class VehiculeController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Lister tous les véhicules actifs")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Liste des véhicules actifs"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)")
+    })
     public ResponseEntity<CollectionModel<VehiculeResponse>> findAll() {
         List<VehiculeResponse> list = service.findAll();
         list.forEach(this::addLinks);
@@ -38,6 +44,11 @@ public class VehiculeController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Obtenir un véhicule par ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Véhicule trouvé"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Véhicule non trouvé")
+    })
     public ResponseEntity<VehiculeResponse> findById(@PathVariable Integer id) {
         VehiculeResponse response = service.findById(id);
         addLinks(response);
@@ -45,7 +56,11 @@ public class VehiculeController {
     }
 
     @GetMapping("/{id}/trajets")
-    @Operation(summary = "Agrégation : véhicule + passagers groupés par date/heure")
+    @Operation(summary = "Agrégation : véhicule + passagers groupés par date/heure", description = "Retourne les trajets d'un véhicule avec la liste des passagers groupés par date, heure, site et type de transport.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trajets du véhicule"),
+            @ApiResponse(responseCode = "404", description = "Véhicule non trouvé")
+    })
     public ResponseEntity<VehiculeTrajetResponse> getTrajets(@PathVariable Integer id) {
         return ResponseEntity.ok(service.getTrajets(id));
     }
@@ -53,6 +68,11 @@ public class VehiculeController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Créer un véhicule")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Véhicule créé"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)")
+    })
     public ResponseEntity<VehiculeResponse> create(@Valid @RequestBody VehiculeRequest request) {
         VehiculeResponse response = service.create(request);
         addLinks(response);
@@ -62,6 +82,12 @@ public class VehiculeController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Modifier un véhicule")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Véhicule modifié"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Véhicule non trouvé")
+    })
     public ResponseEntity<VehiculeResponse> update(@PathVariable Integer id, @Valid @RequestBody VehiculeRequest request) {
         VehiculeResponse response = service.update(id, request);
         addLinks(response);
@@ -70,7 +96,12 @@ public class VehiculeController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Désactiver un véhicule")
+    @Operation(summary = "Désactiver un véhicule", description = "Désactivation logique (soft delete).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Véhicule désactivé"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Véhicule non trouvé")
+    })
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

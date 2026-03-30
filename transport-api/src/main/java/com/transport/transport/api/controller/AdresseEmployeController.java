@@ -5,6 +5,8 @@ import com.transport.transport.api.dto.response.AdresseEmployeResponse;
 import com.transport.transport.api.service.AdresseEmployeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,11 @@ public class AdresseEmployeController {
     private final AdresseEmployeService service;
 
     @GetMapping("/employe/{idEmploye}")
-    @Operation(summary = "Lister les adresses d'un employé")
+    @Operation(summary = "Lister les adresses d'un employé", description = "Un employé ne peut voir que ses propres adresses. Un ADMIN peut voir celles de n'importe quel employé.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Liste des adresses"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (employé ne peut voir que ses propres adresses)")
+    })
     public ResponseEntity<CollectionModel<AdresseEmployeResponse>> findByEmploye(@PathVariable Integer idEmploye,
                                                                                  @Parameter(hidden = true) Authentication authentication) {
         boolean isAdmin = authentication.getAuthorities().stream()
@@ -45,6 +51,11 @@ public class AdresseEmployeController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtenir une adresse par ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Adresse trouvée"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé"),
+            @ApiResponse(responseCode = "404", description = "Adresse non trouvée")
+    })
     public ResponseEntity<AdresseEmployeResponse> findById(@PathVariable Integer id,
                                                             @Parameter(hidden = true) Authentication authentication) {
         AdresseEmployeResponse response = service.findById(id);
@@ -62,7 +73,11 @@ public class AdresseEmployeController {
     }
 
     @PostMapping
-    @Operation(summary = "Créer une adresse")
+    @Operation(summary = "Créer une adresse", description = "Crée une adresse. Pour un employé, l'idEmploye est auto-assigné. Un ADMIN peut spécifier l'idEmploye.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Adresse créée"),
+            @ApiResponse(responseCode = "400", description = "Données invalides")
+    })
     public ResponseEntity<AdresseEmployeResponse> create(@Valid @RequestBody AdresseEmployeRequest request,
                                                           @Parameter(hidden = true) Authentication authentication) {
         boolean isAdmin = authentication.getAuthorities().stream()
@@ -81,6 +96,11 @@ public class AdresseEmployeController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Modifier une adresse")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Adresse modifiée"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Adresse non trouvée")
+    })
     public ResponseEntity<AdresseEmployeResponse> update(@PathVariable Integer id, @Valid @RequestBody AdresseEmployeRequest request) {
         AdresseEmployeResponse response = service.update(id, request);
         addLinks(response);
@@ -89,7 +109,12 @@ public class AdresseEmployeController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Désactiver une adresse")
+    @Operation(summary = "Désactiver une adresse", description = "Désactivation logique (soft delete).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Adresse désactivée"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Adresse non trouvée")
+    })
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

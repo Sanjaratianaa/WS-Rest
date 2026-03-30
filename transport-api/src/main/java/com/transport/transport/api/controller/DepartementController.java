@@ -4,6 +4,8 @@ import com.transport.transport.api.dto.request.DepartementRequest;
 import com.transport.transport.api.dto.response.DepartementResponse;
 import com.transport.transport.api.service.DepartementService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class DepartementController {
 
     @GetMapping
     @Operation(summary = "Lister tous les départements actifs")
+    @ApiResponse(responseCode = "200", description = "Liste des départements actifs")
     public ResponseEntity<CollectionModel<DepartementResponse>> findAll() {
         List<DepartementResponse> list = service.findAll();
         list.forEach(this::addLinks);
@@ -36,6 +39,10 @@ public class DepartementController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtenir un département par ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Département trouvé"),
+            @ApiResponse(responseCode = "404", description = "Département non trouvé")
+    })
     public ResponseEntity<DepartementResponse> findById(@PathVariable Integer id) {
         DepartementResponse response = service.findById(id);
         addLinks(response);
@@ -45,6 +52,11 @@ public class DepartementController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Créer un département")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Département créé"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)")
+    })
     public ResponseEntity<DepartementResponse> create(@Valid @RequestBody DepartementRequest request) {
         DepartementResponse response = service.create(request);
         addLinks(response);
@@ -54,6 +66,12 @@ public class DepartementController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Modifier un département")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Département modifié"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Département non trouvé")
+    })
     public ResponseEntity<DepartementResponse> update(@PathVariable Integer id, @Valid @RequestBody DepartementRequest request) {
         DepartementResponse response = service.update(id, request);
         addLinks(response);
@@ -62,7 +80,12 @@ public class DepartementController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Désactiver un département")
+    @Operation(summary = "Désactiver un département", description = "Désactivation logique (soft delete).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Département désactivé"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Département non trouvé")
+    })
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

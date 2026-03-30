@@ -8,6 +8,8 @@ import com.transport.transport.api.service.AffectationService;
 import com.transport.transport.api.service.TransportOptimisationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @RestController
 @RequestMapping("/api/demandeTransports")
 @RequiredArgsConstructor
-@Tag(name = "DemandeTransports")
+@Tag(name = "Demandes de Transport")
 public class AffectationController {
 
     private final AffectationService service;
@@ -37,6 +39,10 @@ public class AffectationController {
         summary = "Lister les demandes de transport",
         description = "Retourne toutes les demandes de transport. Un ADMIN peut filtrer par date, véhicule, employé, site, statut et département. Un EMPLOYÉ ne voit que ses propres demandes."
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Liste des demandes retournée"),
+            @ApiResponse(responseCode = "401", description = "Non authentifié")
+    })
     public ResponseEntity<CollectionModel<AffectationResponse>> findAll(
             @Parameter(description = "Filtrer par date (YYYY-MM-DD)", required = false) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @Parameter(description = "Filtrer par véhicule", required = false) @RequestParam(required = false) Integer idVehicule,
@@ -64,7 +70,12 @@ public class AffectationController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Obtenir un détail d'une demande de transport par ID")
+    @Operation(summary = "Obtenir le détail d'une demande de transport par ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Détail de la demande"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (employé ne peut voir que ses propres demandes)"),
+            @ApiResponse(responseCode = "404", description = "Demande non trouvée")
+    })
     public ResponseEntity<AffectationResponse> findById(@PathVariable Integer id, @Parameter(hidden = true) Authentication authentication) {
         AffectationResponse response = service.findById(id);
 
@@ -81,7 +92,12 @@ public class AffectationController {
     }
 
     @PostMapping
-    @Operation(summary = "Créer une demande de transport")
+    @Operation(summary = "Créer une demande de transport", description = "Crée une demande. Pour un employé bénéficiaire, le véhicule est assigné automatiquement. Si la demande est créée après 15h pour le jour même, le traitement est forcé en non-bénéficiaire.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Demande créée avec succès"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "401", description = "Non authentifié")
+    })
     public ResponseEntity<AffectationResponse> create(@Valid @RequestBody AffectationRequest request,
                                                        @Parameter(hidden = true) Authentication authentication) {
         boolean isAdmin = authentication.getAuthorities().stream()
@@ -99,7 +115,13 @@ public class AffectationController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Modifier une demande de transport")
+    @Operation(summary = "Modifier une demande de transport", description = "Modifie une demande existante. Réservé aux ADMIN. Un historique est sauvegardé avant modification.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Demande modifiée"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Demande non trouvée")
+    })
     public ResponseEntity<AffectationResponse> update(@PathVariable Integer id, @Valid @RequestBody AffectationRequest request) {
         AffectationResponse response = service.update(id, request);
         addLinks(response);
@@ -108,7 +130,13 @@ public class AffectationController {
 
     @PutMapping("/{id}/valider")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Valider un demande de transport (optionnel: changer véhicule ou reassign auto)")
+    @Operation(summary = "Valider une demande de transport", description = "Valide une demande en attente. Options : corps vide = garder le véhicule actuel, idVehicule = changer de véhicule, reassign = true pour réassignation automatique.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Demande validée"),
+            @ApiResponse(responseCode = "400", description = "Demande déjà validée ou véhicule invalide"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)"),
+            @ApiResponse(responseCode = "404", description = "Demande non trouvée")
+    })
     public ResponseEntity<AffectationResponse> valider(@PathVariable Integer id,
                                                         @RequestBody(required = false) @Valid ValidationRequest request) {
         AffectationResponse response = service.valider(id, request);
@@ -118,7 +146,11 @@ public class AffectationController {
 
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Statistiques globals des transports")
+    @Operation(summary = "Statistiques globales des transports", description = "Retourne le total des demandes, le taux de validation, et la répartition par département et véhicule.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Statistiques retournées"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)")
+    })
     public ResponseEntity<AffectationStatsResponse> getStats() {
         return ResponseEntity.ok(service.getStats());
     }
@@ -127,12 +159,16 @@ public class AffectationController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Optimiser les transports",
-            description = "Groupe les employés par proximité et optimise les routes. Type 1 = Aller, Type 2 = Retour"
+            description = "Groupe les employés par proximité géographique (rayon 2km, Haversine) et optimise les routes par nearest-neighbor. Type 1 = Aller (adresses → site), Type 2 = Retour (site → adresses)."
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Groupes de transport optimisés"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé (ADMIN requis)")
+    })
     public ResponseEntity<List<TransportOptimisationService.GroupeTransport>> optimiser(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam Integer idHeure,
-            @RequestParam Integer idTypeTransport
+            @Parameter(description = "Date des demandes à optimiser (YYYY-MM-DD)", required = true) @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "ID de l'heure de transport", required = true) @RequestParam Integer idHeure,
+            @Parameter(description = "ID du type de transport (1=Aller, 2=Retour)", required = true) @RequestParam Integer idTypeTransport
     ) {
         return ResponseEntity.ok(optimisationService.optimiser(date, idHeure, idTypeTransport));
     }
