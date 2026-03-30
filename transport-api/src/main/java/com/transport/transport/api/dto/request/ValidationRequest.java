@@ -1,5 +1,6 @@
 package com.transport.transport.api.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
