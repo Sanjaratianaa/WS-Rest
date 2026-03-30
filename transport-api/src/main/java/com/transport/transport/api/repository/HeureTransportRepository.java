@@ -7,4 +7,6 @@ import java.util.List;
 public interface HeureTransportRepository extends JpaRepository<HeureTransport, Integer> {
 
     List<HeureTransport> findByActifTrue();
+
+    List<HeureTransport> findAllByOrderByHeure();
 }

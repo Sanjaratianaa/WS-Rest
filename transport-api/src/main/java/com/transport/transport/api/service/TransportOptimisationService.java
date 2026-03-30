@@ -4,167 +4,358 @@ import com.transport.transport.api.entity.*;
 import com.transport.transport.api.repository.*;
 import lombok.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TransportOptimisationService {
 
     private static final double RAYON_TERRE_KM = 6371.0;
-    private static final double RAYON_GROUPEMENT_KM = 2.0;
     private static final int TYPE_ALLER = 1;
+    private static final int MIN_REMPLISSAGE = 5;
+
+    private static final double VITESSE_MOYENNE_KMH = 30;
+    private static final int TEMPS_MAX_MIN = 90;
 
     private final VehiculeRepository vehiculeRepo;
     private final AffectationRepository affectationRepo;
 
     // ============================================================
-    // POINT D'ENTRÉE PRINCIPAL
+    // 🚀 POINT D’ENTRÉE PRINCIPAL
     // ============================================================
-    public List<GroupeTransport> optimiser(LocalDate date, Integer idHeure, Integer idTypeTransport) {
+    @Transactional(readOnly = true)
+    public List<GroupeTransportResponse> optimiser(LocalDate date, Integer idHeure, Integer idTypeTransport) {
 
-        // 1. Récupère les affectations en attente pour cette date/heure/type
         List<Affectation> affectations = affectationRepo
-                .findByDateTransportAndHeureTransportIdAndTypeTransportIdAndEstValideeNullAndEstArchiveFalse(
+                .findByDateTransportAndHeureTransportIdAndTypeTransportIdAndEstValideeTrueAndEstArchiveFalse(
                         date, idHeure, idTypeTransport);
 
         if (affectations.isEmpty()) {
-            throw new RuntimeException(
-                    "Aucune demande de transport en attente pour le " + date
-                            + " à l'heure #" + idHeure
-                            + " (" + (idTypeTransport == TYPE_ALLER ? "Aller" : "Retour") + ")"
-            );
+            throw new RuntimeException("Aucune demande de transport");
         }
 
-        // 2. Récupère les véhicules disponibles triés par capacité décroissante
         List<Vehicule> vehicules = vehiculeRepo.findByActifTrue().stream()
                 .sorted(Comparator.comparingInt(Vehicule::getNombrePlaces).reversed())
                 .toList();
 
         if (vehicules.isEmpty()) {
-            throw new RuntimeException("Aucun véhicule actif disponible");
+            throw new RuntimeException("Aucun véhicule actif");
         }
 
-        // 3. Phase 1 — Grouper par proximité géographique
-        List<Cluster> clusters = grouperParProximite(affectations);
+        // 🔥 1. MULTI-SITE
+        Map<Site, List<Affectation>> parSite = affectations.stream()
+                .collect(Collectors.groupingBy(Affectation::getSite));
 
-        // 4. Phase 2 — Assigner les véhicules aux clusters
-        List<GroupeTransport> groupes = assignerVehicules(clusters, vehicules);
+        List<GroupeTransport> resultats = new ArrayList<>();
 
-        // 5. Phase 3 — Optimiser l'ordre selon le type (Aller ou Retour)
-        groupes.forEach(groupe -> {
-            if (idTypeTransport == TYPE_ALLER) {
-                // ALLER → ramassage : adresses des employés → site
-                optimiserOrdreRamassage(groupe);
-            } else {
-                // RETOUR → dépôt : site → adresses des employés
-                optimiserOrdreDepot(groupe);
-            }
-        });
+        for (Map.Entry<Site, List<Affectation>> entry : parSite.entrySet()) {
 
-        return groupes;
+            List<Affectation> affectationsSite = entry.getValue();
+
+            // 🔥 2. CLUSTERING
+            List<Cluster> clusters = clusteringSimple(affectationsSite, vehicules);
+
+            // 🔥 3. ASSIGNATION OPTIMISÉE
+            List<GroupeTransport> groupes = assignerVehicules(clusters, vehicules);
+
+            // 🔥 4. FUSION PETITS GROUPES
+            fusionnerPetitsGroupes(groupes);
+
+            // 🔥 5. OPTIMISATION TRAJET
+            optimiserTrajets(groupes, idTypeTransport);
+
+            // 🔥 6. VALIDATION TEMPS
+            groupes.removeIf(g -> !estValide(g));
+
+            resultats.addAll(groupes);
+        }
+
+        return resultats.stream().map(this::toResponse).toList();
     }
 
     // ============================================================
-    // PHASE 1 — CLUSTERING GÉOGRAPHIQUE
+    // 🔥 CLUSTERING SIMPLE (AMÉLIORÉ)
     // ============================================================
-    private List<Cluster> grouperParProximite(List<Affectation> affectations) {
+    private List<Cluster> clusteringSimple(List<Affectation> affectations, List<Vehicule> vehicules) {
+
+        int capaciteMoyenne = vehicules.stream()
+                .mapToInt(Vehicule::getNombrePlaces)
+                .sum() / vehicules.size();
+
+        int k = Math.max(1, affectations.size() / capaciteMoyenne);
+
         List<Cluster> clusters = new ArrayList<>();
-        List<Affectation> nonAssignes = new ArrayList<>(affectations);
 
-        while (!nonAssignes.isEmpty()) {
-            // Prend le premier non assigné comme centre du cluster
-            Affectation centre = nonAssignes.remove(0);
-            Cluster cluster = new Cluster(centre);
-
-            // Cherche tous les employés dans le rayon défini
-            Iterator<Affectation> it = nonAssignes.iterator();
-            while (it.hasNext()) {
-                Affectation autre = it.next();
-                double distance = calculerDistance(
-                        centre.getAdresse().getLatitude().doubleValue(),
-                        centre.getAdresse().getLongitude().doubleValue(),
-                        autre.getAdresse().getLatitude().doubleValue(),
-                        autre.getAdresse().getLongitude().doubleValue()
-                );
-                if (distance <= RAYON_GROUPEMENT_KM) {
-                    cluster.ajouterMembre(autre);
-                    it.remove();
-                }
-            }
-            clusters.add(cluster);
+        for (int i = 0; i < k; i++) {
+            clusters.add(new Cluster(affectations.get(i)));
         }
 
-        // Trie les clusters par taille décroissante (les plus grands d'abord)
-        clusters.sort(Comparator.comparingInt(Cluster::taille).reversed());
+        for (Affectation a : affectations) {
+
+            Cluster meilleur = null;
+            double min = Double.MAX_VALUE;
+
+            for (Cluster c : clusters) {
+
+                Affectation centre = c.getMembres().get(0);
+
+                double d = calculerDistance(
+                        centre.getAdresse().getLatitude().doubleValue(),
+                        centre.getAdresse().getLongitude().doubleValue(),
+                        a.getAdresse().getLatitude().doubleValue(),
+                        a.getAdresse().getLongitude().doubleValue()
+                );
+
+                if (d < min) {
+                    min = d;
+                    meilleur = c;
+                }
+            }
+
+            meilleur.ajouterMembre(a);
+        }
+
         return clusters;
     }
 
     // ============================================================
-    // PHASE 2 — ASSIGNATION DES VÉHICULES
+    // 🔥 ASSIGNATION OPTIMISÉE (GLOBAL)
     // ============================================================
     private List<GroupeTransport> assignerVehicules(List<Cluster> clusters, List<Vehicule> vehicules) {
+
+        List<Affectation> restants = clusters.stream()
+                .flatMap(c -> c.getMembres().stream())
+                .collect(Collectors.toCollection(ArrayList::new));
+
         List<GroupeTransport> groupes = new ArrayList<>();
-        List<Vehicule> vehiculesDisponibles = new ArrayList<>(vehicules);
+        List<Vehicule> disponibles = new ArrayList<>(vehicules);
 
-        for (Cluster cluster : clusters) {
-            List<Affectation> membres = new ArrayList<>(cluster.getMembres());
+        while (!restants.isEmpty()) {
 
-            while (!membres.isEmpty()) {
-                if (vehiculesDisponibles.isEmpty()) {
-                    // ⚠️ Plus de véhicules → groupe sans véhicule
-                    groupes.add(new GroupeTransport(null, new ArrayList<>(membres)));
-                    membres.clear();
-                    break;
-                }
-
-                // Prend le véhicule le plus grand disponible
-                Vehicule vehicule = vehiculesDisponibles.get(0);
-                int capacite = vehicule.getNombrePlaces();
-
-                // Remplit le véhicule au maximum
-                List<Affectation> passagers = new ArrayList<>(
-                        membres.subList(0, Math.min(capacite, membres.size()))
-                );
-                membres.removeAll(passagers);
-
-                groupes.add(new GroupeTransport(vehicule, passagers));
-
-                // Si véhicule plein → on passe au suivant
-                if (passagers.size() >= capacite) {
-                    vehiculesDisponibles.remove(0);
-                }
+            if (disponibles.isEmpty()) {
+                groupes.add(new GroupeTransport(null, new ArrayList<>(restants)));
+                break;
             }
+
+            Vehicule v = disponibles.remove(0);
+            List<Affectation> groupe = construireGroupeProche(restants, v.getNombrePlaces());
+
+            restants.removeAll(groupe);
+
+            groupes.add(new GroupeTransport(v, groupe));
         }
 
         return groupes;
     }
 
     // ============================================================
-    // PHASE 3A — ALLER : Optimisation ordre de ramassage
-    // Adresses employés → Site
+    // 🔥 GROUPE PAR PROXIMITÉ
     // ============================================================
+    private List<Affectation> construireGroupeProche(List<Affectation> pool, int capacite) {
+
+        List<Affectation> groupe = new ArrayList<>();
+
+        Affectation depart = pool.get(0);
+        groupe.add(depart);
+        pool.remove(depart);
+
+        while (groupe.size() < capacite && !pool.isEmpty()) {
+
+            Affectation dernier = groupe.get(groupe.size() - 1);
+
+            Affectation plusProche = null;
+            double min = Double.MAX_VALUE;
+
+            for (Affectation a : pool) {
+
+                double d = calculerDistance(
+                        dernier.getAdresse().getLatitude().doubleValue(),
+                        dernier.getAdresse().getLongitude().doubleValue(),
+                        a.getAdresse().getLatitude().doubleValue(),
+                        a.getAdresse().getLongitude().doubleValue()
+                );
+
+                if (d < min) {
+                    min = d;
+                    plusProche = a;
+                }
+            }
+
+            groupe.add(plusProche);
+            pool.remove(plusProche);
+        }
+
+        return groupe;
+    }
+
+    // ============================================================
+    // 🔥 FUSION PETITS GROUPES
+    // ============================================================
+    private void fusionnerPetitsGroupes(List<GroupeTransport> groupes) {
+
+        List<GroupeTransport> petits = groupes.stream()
+                .filter(g -> g.getNombrePassagers() < MIN_REMPLISSAGE)
+                .toList();
+
+        for (GroupeTransport petit : petits) {
+
+            for (GroupeTransport autre : groupes) {
+
+                if (autre == petit) continue;
+                if (autre.getVehicule() == null) continue;
+
+                if (autre.getNombrePassagers() + petit.getNombrePassagers()
+                        <= autre.getVehicule().getNombrePlaces()) {
+
+                    autre.getPassagers().addAll(petit.getPassagers());
+                    petit.getPassagers().clear();
+                    break;
+                }
+            }
+        }
+
+        groupes.removeIf(g -> g.getPassagers().isEmpty());
+    }
+
+    // ============================================================
+    // 🔥 OPTIMISATION TRAJETS
+    // ============================================================
+    private void optimiserTrajets(List<GroupeTransport> groupes, Integer type) {
+
+        for (GroupeTransport g : groupes) {
+
+            if (type == TYPE_ALLER) {
+                optimiserOrdreRamassage(g);
+            } else {
+                optimiserOrdreDepot(g);
+            }
+        }
+    }
+
+    // ============================================================
+    // 🔥 VALIDATION TEMPS
+    // ============================================================
+    private boolean estValide(GroupeTransport groupe) {
+
+        double distance = 0;
+        List<Affectation> p = groupe.getPassagers();
+
+        for (int i = 0; i < p.size() - 1; i++) {
+            distance += calculerDistance(
+                    p.get(i).getAdresse().getLatitude().doubleValue(),
+                    p.get(i).getAdresse().getLongitude().doubleValue(),
+                    p.get(i + 1).getAdresse().getLatitude().doubleValue(),
+                    p.get(i + 1).getAdresse().getLongitude().doubleValue()
+            );
+        }
+
+        double temps = (distance / VITESSE_MOYENNE_KMH) * 60;
+
+        return temps <= TEMPS_MAX_MIN;
+    }
+
+    // ============================================================
+    // 🔥 DISTANCE
+    // ============================================================
+    private double calculerDistance(double lat1, double lon1, double lat2, double lon2) {
+
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        return RAYON_TERRE_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // ============================================================
+    // DTO + CLASSES
+    // ============================================================
+    @Getter
+    public static class Cluster {
+        private final List<Affectation> membres = new ArrayList<>();
+        public Cluster(Affectation centre) { membres.add(centre); }
+        public void ajouterMembre(Affectation a) { membres.add(a); }
+    }
+
+    @Getter @Setter @AllArgsConstructor
+    public static class GroupeTransport {
+        private Vehicule vehicule;
+        private List<Affectation> passagers;
+
+        public int getNombrePassagers() { return passagers.size(); }
+
+        public double getTauxRemplissage() {
+            if (vehicule == null) return 0;
+            return (double) passagers.size() / vehicule.getNombrePlaces() * 100;
+        }
+    }
+
+    private GroupeTransportResponse toResponse(GroupeTransport g) {
+
+        List<GroupeTransportResponse.PassagerResponse> passagers = new ArrayList<>();
+
+        for (int i = 0; i < g.getPassagers().size(); i++) {
+
+            Affectation a = g.getPassagers().get(i);
+
+            passagers.add(GroupeTransportResponse.PassagerResponse.builder()
+                    .idEmploye(a.getEmploye().getId())
+                    .nomComplet(a.getEmploye().getNom() + " " + a.getEmploye().getPrenom())
+                    .adresse(a.getAdresse().getAdresse())
+                    .latitude(a.getAdresse().getLatitude().doubleValue())
+                    .longitude(a.getAdresse().getLongitude().doubleValue())
+                    .ordre(i + 1)
+                    .build());
+        }
+
+        return GroupeTransportResponse.builder()
+                .idVehicule(g.getVehicule() != null ? g.getVehicule().getId() : null)
+                .matriculeVehicule(g.getVehicule() != null ? g.getVehicule().getMatricule() : "Sans véhicule")
+                .capacite(g.getVehicule() != null ? g.getVehicule().getNombrePlaces() : 0)
+                .nombrePassagers(g.getNombrePassagers())
+                .tauxRemplissage(g.getTauxRemplissage())
+                .passagers(passagers)
+                .build();
+    }
+
     private void optimiserOrdreRamassage(GroupeTransport groupe) {
+
         List<Affectation> passagers = new ArrayList<>(groupe.getPassagers());
         List<Affectation> ordreOptimal = new ArrayList<>();
 
-        // Point de départ = premier passager (le plus éloigné du centre)
-        Affectation actuel = passagers.remove(0);
+        // 🔥 NOUVEAU : commencer par le plus éloigné du site
+        Affectation actuel = passagers.stream()
+                .max(Comparator.comparingDouble(a -> calculerDistance(
+                        a.getAdresse().getLatitude().doubleValue(),
+                        a.getAdresse().getLongitude().doubleValue(),
+                        a.getSite().getLatitude().doubleValue(),
+                        a.getSite().getLongitude().doubleValue()
+                )))
+                .orElse(passagers.get(0));
+
+        passagers.remove(actuel);
         ordreOptimal.add(actuel);
 
-        // Algorithme du plus proche voisin
         while (!passagers.isEmpty()) {
+
             Affectation plusProche = null;
             double distanceMin = Double.MAX_VALUE;
 
             for (Affectation candidat : passagers) {
+
                 double distance = calculerDistance(
                         actuel.getAdresse().getLatitude().doubleValue(),
                         actuel.getAdresse().getLongitude().doubleValue(),
                         candidat.getAdresse().getLatitude().doubleValue(),
                         candidat.getAdresse().getLongitude().doubleValue()
                 );
+
                 if (distance < distanceMin) {
                     distanceMin = distance;
                     plusProche = candidat;
@@ -179,31 +370,30 @@ public class TransportOptimisationService {
         groupe.setPassagers(ordreOptimal);
     }
 
-    // ============================================================
-    // PHASE 3B — RETOUR : Optimisation ordre de dépôt
-    // Site → Adresses employés
-    // ============================================================
     private void optimiserOrdreDepot(GroupeTransport groupe) {
+
         List<Affectation> passagers = new ArrayList<>(groupe.getPassagers());
         List<Affectation> ordreOptimal = new ArrayList<>();
 
-        // Point de départ = le site
-        Affectation premiereAffectation = groupe.getPassagers().get(0);
-        double latActuelle = premiereAffectation.getSite().getLatitude().doubleValue();
-        double lonActuelle = premiereAffectation.getSite().getLongitude().doubleValue();
+        // 🔥 départ = site
+        Affectation premier = passagers.get(0);
 
-        // Algorithme du plus proche voisin depuis le site
+        double latActuelle = premier.getSite().getLatitude().doubleValue();
+        double lonActuelle = premier.getSite().getLongitude().doubleValue();
+
         while (!passagers.isEmpty()) {
+
             Affectation plusProche = null;
             double distanceMin = Double.MAX_VALUE;
 
             for (Affectation candidat : passagers) {
+
                 double distance = calculerDistance(
-                        latActuelle,
-                        lonActuelle,
+                        latActuelle, lonActuelle,
                         candidat.getAdresse().getLatitude().doubleValue(),
                         candidat.getAdresse().getLongitude().doubleValue()
                 );
+
                 if (distance < distanceMin) {
                     distanceMin = distance;
                     plusProche = candidat;
@@ -212,7 +402,7 @@ public class TransportOptimisationService {
 
             ordreOptimal.add(plusProche);
             passagers.remove(plusProche);
-            // Le prochain départ = adresse du passager déposé
+
             latActuelle = plusProche.getAdresse().getLatitude().doubleValue();
             lonActuelle = plusProche.getAdresse().getLongitude().doubleValue();
         }
@@ -220,55 +410,23 @@ public class TransportOptimisationService {
         groupe.setPassagers(ordreOptimal);
     }
 
-    // ============================================================
-    // FORMULE HAVERSINE — Distance réelle entre 2 points GPS (en km)
-    // ============================================================
-    private double calculerDistance(double lat1, double lon1, double lat2, double lon2) {
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return RAYON_TERRE_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
+    @Getter @Setter @Builder
+    public static class GroupeTransportResponse {
+        private Integer idVehicule;
+        private String matriculeVehicule;
+        private Integer capacite;
+        private Integer nombrePassagers;
+        private Double tauxRemplissage;
+        private List<PassagerResponse> passagers;
 
-    // ============================================================
-    // CLASSES INTERNES
-    // ============================================================
-    @Getter
-    public static class Cluster {
-        private final List<Affectation> membres = new ArrayList<>();
-
-        public Cluster(Affectation centre) {
-            membres.add(centre);
-        }
-
-        public void ajouterMembre(Affectation a) {
-            membres.add(a);
-        }
-
-        public int taille() {
-            return membres.size();
-        }
-    }
-
-    @Getter @Setter
-    @AllArgsConstructor
-    public static class GroupeTransport {
-        private Vehicule vehicule;
-        private List<Affectation> passagers;
-
-        public int getNombrePassagers() {
-            return passagers.size();
-        }
-
-        public double getTauxRemplissage() {
-            if (vehicule == null || vehicule.getNombrePlaces() == 0) return 0;
-            return (double) passagers.size() / vehicule.getNombrePlaces() * 100;
-        }
-
-        public boolean hasVehicule() {
-            return vehicule != null;
+        @Getter @Setter @Builder
+        public static class PassagerResponse {
+            private Integer idEmploye;
+            private String nomComplet;
+            private String adresse;
+            private Double latitude;
+            private Double longitude;
+            private Integer ordre;
         }
     }
 }

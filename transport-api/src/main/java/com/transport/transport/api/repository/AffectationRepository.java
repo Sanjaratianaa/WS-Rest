@@ -43,5 +43,5 @@ public interface AffectationRepository extends JpaRepository<Affectation, Intege
             @Param("date") LocalDate date,
             @Param("idHeure") Integer idHeure);
 
-    List<Affectation> findByDateTransportAndHeureTransportIdAndTypeTransportIdAndEstValideeNullAndEstArchiveFalse(LocalDate date, Integer idHeure, Integer idTypeTransport);
+    List<Affectation> findByDateTransportAndHeureTransportIdAndTypeTransportIdAndEstValideeTrueAndEstArchiveFalse(LocalDate date, Integer idHeure, Integer idTypeTransport);
 }

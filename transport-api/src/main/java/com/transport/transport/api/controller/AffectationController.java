@@ -125,15 +125,10 @@ public class AffectationController {
 
     @GetMapping("/optimiser")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Optimiser les transports",
-            description = "Groupe les employés par proximité et optimise les routes. Type 1 = Aller, Type 2 = Retour"
-    )
-    public ResponseEntity<List<TransportOptimisationService.GroupeTransport>> optimiser(
+    public ResponseEntity<List<TransportOptimisationService.GroupeTransportResponse>> optimiser(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Integer idHeure,
-            @RequestParam Integer idTypeTransport
-    ) {
+            @RequestParam Integer idTypeTransport) {
         return ResponseEntity.ok(optimisationService.optimiser(date, idHeure, idTypeTransport));
     }
 

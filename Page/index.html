@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des Trajets - Données Externes</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .legend {
+            background: white;
+            padding: 15px;
+            line-height: 24px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            display: inline-block;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+
+<script>
+    const map = L.map('map').setView([-18.91, 47.52], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];
+
+    // Plus besoin de fetch ni de async/await !
+    function init() {
+        if (typeof trajetsData !== 'undefined') {
+            displayRoutes(trajetsData);
+        } else {
+            alert("Erreur : La variable trajetsData n'est pas trouvée dans data.js");
+        }
+    }
+
+    function displayRoutes(data) {
+        data.forEach((vehicule, index) => {
+            if (!vehicule.idVehicule) return;
+
+            const pathColor = colors[index % colors.length];
+            const routeCoords = [];
+
+            // Trier par ordre
+            const passagers = vehicule.passagers.sort((a, b) => a.ordre - b.ordre);
+
+            passagers.forEach(p => {
+                const pos = [p.latitude, p.longitude];
+                routeCoords.push(pos);
+
+                L.circleMarker(pos, {
+                    radius: 5,
+                    color: pathColor,
+                    fillColor: 'white',
+                    fillOpacity: 1
+                }).addTo(map).bindPopup(`Vehicule: ${vehicule.matriculeVehicule}<br>Passager: ${p.nomComplet}`);
+            });
+
+            L.polyline(routeCoords, { color: pathColor, weight: 3 }).addTo(map);
+        });
+    }
+
+    // Lancement immédiat
+    init();
+</script>
+
+</body>
+</html>
