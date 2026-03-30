@@ -139,7 +139,7 @@ public class TestDataService {
 
         Random random = new Random(42); // seed fixe pour reproductibilité
         int nbAffectations = 0;
-        LocalDate dateDemain = LocalDate.now();
+        LocalDate dateDemain = LocalDate.now().plusDays(1);
 
         // Génère 50 agents
         for (int i = 0; i < 50; i++) {

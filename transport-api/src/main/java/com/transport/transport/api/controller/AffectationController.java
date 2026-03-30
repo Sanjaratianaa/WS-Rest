@@ -123,13 +123,34 @@ public class AffectationController {
         return ResponseEntity.ok(service.getStats());
     }
 
-    @GetMapping("/optimiser")
+    @GetMapping("/simulationDispach")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Simuler la répartition des transports",
+            description = "Calcule et retourne une proposition d'optimisation (Clustering + TSP) " +
+                    "sans modifier les données en base de données. Utile pour une prévisualisation."
+    )
     public ResponseEntity<List<TransportOptimisationService.GroupeTransportResponse>> optimiser(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Integer idHeure,
             @RequestParam Integer idTypeTransport) {
         return ResponseEntity.ok(optimisationService.optimiser(date, idHeure, idTypeTransport));
+    }
+
+    @PostMapping("/assignationAutomatique")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Exécuter et enregistrer l'assignation automatique",
+            description = "Calcule l'optimisation, archive les données obsolètes, puis met à jour " +
+                    "chaque affectation en base en lui assignant un véhicule."
+    )
+    public ResponseEntity<List<TransportOptimisationService.GroupeTransportResponse>> assignationAutomatique(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam Integer idHeure,
+            @RequestParam Integer idTypeTransport) {
+
+        return ResponseEntity.ok(optimisationService.genererEtSauvegarder(date, idHeure, idTypeTransport));
+
     }
 
     private void addLinks(AffectationResponse r) {

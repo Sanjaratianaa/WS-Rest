@@ -119,7 +119,10 @@ public class AffectationService {
         Affectation entity = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Affectation introuvable"));
 
-        saveHistorique(entity);
+        // 1. Validation de la date (Règle Métier)
+        if (entity.getDateTransport().isBefore(LocalDate.now())) {
+            throw new RuntimeException("Impossible de modifier ou d'assigner des transports pour une date passée (" + entity.getDateTransport() + ")");
+        }
 
         if (request.getDate() != null)
             entity.setDateTransport(request.getDate());
@@ -164,8 +167,6 @@ public class AffectationService {
             throw new RuntimeException(
                     "La demande de transport #" + id + " a déjà été validée le "
                             + entity.getDateValidation().toLocalDate());
-
-        saveHistorique(entity);
 
         if (request != null && request.getIdVehicule() != null && Boolean.FALSE.equals(request.getReassign())) {
             entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule())
