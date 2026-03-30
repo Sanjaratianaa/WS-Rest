@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/affectations").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/demandeTransports").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/adresses").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")

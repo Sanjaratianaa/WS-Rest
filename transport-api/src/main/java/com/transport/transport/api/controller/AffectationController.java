@@ -5,6 +5,7 @@ import com.transport.transport.api.dto.request.ValidationRequest;
 import com.transport.transport.api.dto.response.AffectationResponse;
 import com.transport.transport.api.dto.response.AffectationStatsResponse;
 import com.transport.transport.api.service.AffectationService;
+import com.transport.transport.api.service.TransportOptimisationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +30,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 public class AffectationController {
 
     private final AffectationService service;
+    private final TransportOptimisationService optimisationService;
 
     @GetMapping
     @Operation(
@@ -119,6 +121,20 @@ public class AffectationController {
     @Operation(summary = "Statistiques globals des transports")
     public ResponseEntity<AffectationStatsResponse> getStats() {
         return ResponseEntity.ok(service.getStats());
+    }
+
+    @GetMapping("/optimiser")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Optimiser les transports",
+            description = "Groupe les employés par proximité et optimise les routes. Type 1 = Aller, Type 2 = Retour"
+    )
+    public ResponseEntity<List<TransportOptimisationService.GroupeTransport>> optimiser(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam Integer idHeure,
+            @RequestParam Integer idTypeTransport
+    ) {
+        return ResponseEntity.ok(optimisationService.optimiser(date, idHeure, idTypeTransport));
     }
 
     private void addLinks(AffectationResponse r) {

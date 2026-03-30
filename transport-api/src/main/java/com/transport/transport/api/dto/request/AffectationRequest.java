@@ -1,18 +1,18 @@
 package com.transport.transport.api.dto.request;
 
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.Date;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class AffectationRequest {
 
     @NotNull(message = "La date est obligatoire.")
-    @Positive(message = "La valeur de la date doit être supérieur ou égal à la date du Jour.")
+    @FutureOrPresent(message = "La date ne peut pas être dans le passé.")
     private LocalDate date;
 
     @Positive(message = "L'identifiant de l'employé doit être un entier positif.")
@@ -38,8 +38,4 @@ public class AffectationRequest {
 
     @Size(max = 500, message = "Le commentaire ne doit pas dépasser 500 caractères.")
     private String commentaire;
-
-    @NotNull(message = "Le type est obligatoire.")
-    @Positive(message = "L'identifiant du type doit être un entier positif.")
-    private Integer idType;
 }

@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -62,10 +64,34 @@ public class AffectationService {
         HeureTransport heureTransport = heureTransportRepo.findById(request.getIdHeureTransport())
                 .orElseThrow(() -> new RuntimeException("HeureTransport introuvable"));
 
-        Vehicule vehicule = request.getIdVehicule() != null
-                ? vehiculeRepo.findById(request.getIdVehicule())
-                .orElseThrow(() -> new RuntimeException("Véhicule introuvable"))
-                : findVehiculeDisponible(request.getDate(), heureTransport.getId());
+        // Vérifie si la demande est créée après 15h
+        // - date de transport = aujourd'hui ET heure actuelle > 15h
+        boolean depasDelai = request.getDate().isEqual(LocalDate.now())
+                && LocalTime.now().isAfter(LocalTime.of(15, 0));
+
+        Boolean isBeneficiare = employe.getEstBeneficiaire();
+        String commentaire = request.getCommentaire();
+        Vehicule vehicule = null;
+        TypeAffectation typeAffectation = null;
+        Boolean estValidee = false;
+        LocalDateTime dateValidation = null;
+
+        if (depasDelai) {
+            isBeneficiare = false;
+            commentaire = "En attente de validation à cause du dépassement du délai (demande créée après 15h)";
+        }
+
+        if (isBeneficiare) {
+            vehicule = request.getIdVehicule() != null
+                    ? vehiculeRepo.findById(request.getIdVehicule())
+                    .orElseThrow(() -> new RuntimeException("Véhicule introuvable"))
+                    : findVehiculeDisponible(request.getDate(), heureTransport.getId());
+
+            typeAffectation = typeAffectationRepo.findById(1)
+                    .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable"));
+            estValidee = true;
+            dateValidation = LocalDateTime.now();
+        }
 
         Affectation entity = Affectation.builder()
                 .dateTransport(request.getDate())
@@ -76,13 +102,13 @@ public class AffectationService {
                 .site(siteRepo.findById(request.getIdSite())
                         .orElseThrow(() -> new RuntimeException("Site introuvable")))
                 .heureTransport(heureTransport)
-                .typeAffectation(typeAffectationRepo.findById(request.getIdType())
-                        .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable")))
+                .typeAffectation(typeAffectation)
                 .vehicule(vehicule)
-                .commentaire(request.getCommentaire())
-                .estValidee(null)
+                .commentaire(commentaire)
+                .estValidee(estValidee)
                 .estArchive(false)
                 .dateCreation(LocalDateTime.now())
+                .dateValidation(dateValidation)
                 .build();
 
         return toResponse(repo.save(entity));
@@ -112,9 +138,14 @@ public class AffectationService {
         if (request.getIdHeureTransport() != null)
             entity.setHeureTransport(heureTransportRepo.findById(request.getIdHeureTransport())
                     .orElseThrow(() -> new RuntimeException("HeureTransport introuvable")));
-        if (request.getIdType() != null)
-            entity.setTypeAffectation(typeAffectationRepo.findById(request.getIdType())
+
+        boolean vehiculeChange = request.getIdVehicule() != null
+                && (entity.getVehicule() == null
+                || !request.getIdVehicule().equals(entity.getVehicule().getId()));
+        if (vehiculeChange)
+            entity.setTypeAffectation(typeAffectationRepo.findById(2)
                     .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable")));
+
         if (request.getIdVehicule() != null)
             entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule())
                     .orElseThrow(() -> new RuntimeException("Véhicule introuvable")));
@@ -126,20 +157,30 @@ public class AffectationService {
     @Transactional
     public AffectationResponse valider(Integer id, ValidationRequest request) {
         Affectation entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Affectation introuvable"));
+                .orElseThrow(() -> new RuntimeException(
+                        "Demande de transport ID #" + id + " introuvable"));
+
+        if (Boolean.TRUE.equals(entity.getEstValidee()))
+            throw new RuntimeException(
+                    "La demande de transport #" + id + " a déjà été validée le "
+                            + entity.getDateValidation().toLocalDate());
 
         saveHistorique(entity);
 
-        if (request != null && request.getIdVehicule() != null) {
+        if (request != null && request.getIdVehicule() != null && Boolean.FALSE.equals(request.getReassign())) {
             entity.setVehicule(vehiculeRepo.findById(request.getIdVehicule())
                     .orElseThrow(() -> new RuntimeException("Véhicule introuvable")));
-        } else if (request != null && Boolean.TRUE.equals(request.getReassign())) {
+            entity.setTypeAffectation(typeAffectationRepo.findById(2)
+                    .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable")));
+        } else {
             Vehicule vehiculeAuto = findVehiculeDisponible(
                     entity.getDateTransport(), entity.getHeureTransport().getId());
             if (vehiculeAuto == null) {
                 throw new RuntimeException("Aucun véhicule disponible pour cette date et heure");
             }
             entity.setVehicule(vehiculeAuto);
+            entity.setTypeAffectation(typeAffectationRepo.findById(1)
+                    .orElseThrow(() -> new RuntimeException("TypeAffectation introuvable")));
         }
 
         entity.setEstValidee(true);
@@ -150,9 +191,13 @@ public class AffectationService {
 
     private Vehicule findVehiculeDisponible(LocalDate date, Integer idHeure) {
         return vehiculeRepo.findByActifTrue().stream()
-                .filter(v -> repo.countByVehiculeAndDateAndHeure(v.getId(), date, idHeure) < v.getNombrePlaces())
-                .findFirst()
-                .orElse(null);
+                .filter(v -> repo.countByVehiculeAndDateAndHeure(v.getId(), date, idHeure)
+                        < v.getNombrePlaces())
+                // Trie par nombre de passagers décroissant → le plus chargé en premier
+                .max(Comparator.comparingLong(v ->
+                        repo.countByVehiculeAndDateAndHeure(v.getId(), date, idHeure)))
+                .orElseThrow(() -> new RuntimeException(
+                        "Aucun véhicule disponible pour le " + date));
     }
 
     public AffectationStatsResponse getStats() {

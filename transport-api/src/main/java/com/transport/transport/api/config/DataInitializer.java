@@ -141,29 +141,29 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Types affectation : Automatique, Manuel");
 
         // Affectations de test
-        affectationRepo.save(Affectation.builder()
-                .dateTransport(LocalDate.now().plusDays(1)).employe(emp1).adresse(adr1)
-                .typeTransport(aller).site(siege).vehicule(v1)
-                .heureTransport(matin).typeAffectation(manuel)
-                .estValidee(true).commentaire("Trajet matin validé").build());
-
-        affectationRepo.save(Affectation.builder()
-                .dateTransport(LocalDate.now().plusDays(1)).employe(emp2).adresse(adr2)
-                .typeTransport(aller).site(siege).vehicule(v1)
-                .heureTransport(matin).typeAffectation(manuel)
-                .estValidee(true).commentaire("Trajet matin validé").build());
-
-        affectationRepo.save(Affectation.builder()
-                .dateTransport(LocalDate.now()).employe(emp1).adresse(adr1)
-                .typeTransport(retour).site(siege).vehicule(v1)
-                .heureTransport(soir).typeAffectation(auto)
-                .commentaire("En attente de validation").build());
-
-        affectationRepo.save(Affectation.builder()
-                .dateTransport(LocalDate.now().plusDays(1)).employe(emp3).adresse(adr3)
-                .typeTransport(aller).site(siege)
-                .heureTransport(matin).typeAffectation(auto)
-                .commentaire("Demande sans véhicule - à valider").build());
+//        affectationRepo.save(Affectation.builder()
+//                .dateTransport(LocalDate.now().plusDays(1)).employe(emp1).adresse(adr1)
+//                .typeTransport(aller).site(siege).vehicule(v1)
+//                .heureTransport(matin).typeAffectation(manuel)
+//                .estValidee(true).commentaire("Trajet matin validé").build());
+//
+//        affectationRepo.save(Affectation.builder()
+//                .dateTransport(LocalDate.now().plusDays(1)).employe(emp2).adresse(adr2)
+//                .typeTransport(aller).site(siege).vehicule(v1)
+//                .heureTransport(matin).typeAffectation(manuel)
+//                .estValidee(true).commentaire("Trajet matin validé").build());
+//
+//        affectationRepo.save(Affectation.builder()
+//                .dateTransport(LocalDate.now()).employe(emp1).adresse(adr1)
+//                .typeTransport(retour).site(siege).vehicule(v1)
+//                .heureTransport(soir).typeAffectation(auto)
+//                .commentaire("En attente de validation").build());
+//
+//        affectationRepo.save(Affectation.builder()
+//                .dateTransport(LocalDate.now().plusDays(1)).employe(emp3).adresse(adr3)
+//                .typeTransport(aller).site(siege)
+//                .heureTransport(matin).typeAffectation(auto)
+//                .commentaire("Demande sans véhicule - à valider").build());
 
         log.info("Affectations de test créées");
         log.info("=== Initialisation terminée ===");
